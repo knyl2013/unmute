@@ -1,4 +1,6 @@
-# Remeber to run on cuda11 machine
+#!/bin/bash
+set -ex
+# Remeber to run on cuda12.1 machine
 export HF_TOKEN=
 curl -LsSf https://astral.sh/uv/install.sh | sh
 curl https://sh.rustup.rs -sSf | sh
