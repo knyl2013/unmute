@@ -6,39 +6,67 @@ set -e # Exit immediately if a command exits with a non-zero status.
 wait_for_port() {
   local port="$1"
   local service_name="$2"
-  echo "Waiting for $service_name on port $port..."
+  echo "--> Waiting for $service_name on port $port..."
   # 'ss' is modern, 'netstat' is a fallback.
   # We loop until the command to check the port succeeds (exit code 0)
   while ! (ss -tln | grep -q ":$port\b") && ! (netstat -tln | grep -q ":$port\b"); do
     sleep 2 # wait for 2 seconds before checking again
   done
-  echo "$service_name is up and running!"
+  echo "--> SUCCESS: $service_name is up and running!"
 }
 
-# --- Initial Setup (from your script) ---
-echo "Running one-time setup..."
-curl -LsSf https://astral.sh/uv/install.sh | sh
-curl https://sh.rustup.rs -sSf -- -y # Adding -y to make it non-interactive
-curl -fsSL https://get.pnpm.io/install.sh | sh -
-eval "$(cat ~/.bashrc | tail -n +10)"
-sudo apt-get update
-sudo apt-get install -y vim libssl-dev pkg-config cmake
-echo "All setup complete. Starting services sequentially..."
+# --- Helper Function for Initial Setup ---
+run_initial_setup() {
+  echo "--- Running one-time initial setup ---"
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  curl https://sh.rustup.rs -sSf -- -y # Added -y for non-interactive install
+  curl -fsSL https://get.pnpm.io/install.sh | sh -
+
+  eval "$(cat ~/.bashrc | tail -n +10)"
+
+  echo "--- Installing system dependencies (requires sudo) ---"
+  sudo apt-get update
+  sudo apt-get install -y vim libssl-dev pkg-config cmake
+  echo "--- Initial setup complete ---"
+}
+
+
+# --- Main Logic ---
+
+# Check if the first argument is "no-init".
+# If it's anything else (or empty), run the setup.
+if [ "$1" != "no-init" ]; then
+  run_initial_setup
+else
+  echo "--- Skipping initial setup as requested by 'no-init' argument. ---"
+  # Even if we skip setup, we still need to source the bashrc to get the PATHs
+  source "$HOME/.bashrc"
+fi
+
+
+echo ""
+echo "--- Starting services sequentially ---"
+echo ""
 
 # --- Sequential Service Startup ---
+
 # 1. Start Frontend
+echo "Starting Frontend..."
 ./dockerless/start_frontend.sh &
 wait_for_port 3000 "Frontend"
 
 # 2. Start Backend
+echo "Starting Backend..."
 ./dockerless/start_backend.sh &
 wait_for_port 8000 "Backend"
 
 # 3. Start LLM Service
+echo "Starting LLM Service..."
 ./dockerless/start_llm.sh &
 wait_for_port 8091 "LLM Service"
 
 # 4. Start STT (Speech-to-Text) Service
+echo "Starting STT Service..."
 ./dockerless/start_stt.sh &
 wait_for_port 8090 "STT Service"
 
