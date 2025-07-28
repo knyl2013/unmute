@@ -12,6 +12,4 @@ apt-get install -y vim libssl-dev pkg-config cmake
 ./dockerless/start_backend.sh &
 ./dockerless/start_llm.sh &
 ./dockerless/start_stt.sh &
-./dockerless/start_tts.sh &
-wait
-
+./dockerless/start_tts.sh
