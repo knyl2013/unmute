@@ -19,7 +19,7 @@ wait_for_port() {
 run_initial_setup() {
   echo "--- Running one-time initial setup ---"
   curl -LsSf https://astral.sh/uv/install.sh | sh
-  curl https://sh.rustup.rs -sSf -- -y # Added -y for non-interactive install
+  curl https://sh.rustup.rs -sSf | sh
   curl -fsSL https://get.pnpm.io/install.sh | sh -
 
   eval "$(cat ~/.bashrc | tail -n +10)"
