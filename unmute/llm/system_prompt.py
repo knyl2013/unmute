@@ -81,11 +81,11 @@ with "Bye!"
 LanguageCode = Literal["en", "fr", "en/fr", "fr/en"]
 LANGUAGE_CODE_TO_INSTRUCTIONS: dict[LanguageCode | None, str] = {
     None: "Speak English.",  # default
-    "en": "Speak English. You also speak a bit of French, but if asked to do so, mention you might have an accent.",
+    "en": "Speak English.",
     "fr": "Speak French. Don't speak English unless asked to. You also speak a bit of English, but if asked to do so, mention you might have an accent.",
     # Hacky, but it works since we only have two languages
     "en/fr": "Speak English.",
-    "fr/en": "You speak French and English.",
+    "fr/en": "Speak English.",
 }
 
 
