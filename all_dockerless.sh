@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 # Remeber to run on cuda12.1 machine
-export HF_TOKEN=
+# Remeber to set export HF_TOKEN=xxxx..
 curl -LsSf https://astral.sh/uv/install.sh | sh
 curl https://sh.rustup.rs -sSf | sh
 curl -fsSL https://get.pnpm.io/install.sh | sh -
