@@ -24,9 +24,9 @@ run_initial_setup() {
 
   eval "$(cat ~/.bashrc | tail -n +10)"
 
-  echo "--- Installing system dependencies (requires sudo) ---"
-  sudo apt-get update
-  sudo apt-get install -y vim libssl-dev pkg-config cmake
+  echo "--- Installing system dependencies ---"
+  apt-get update
+apt-get install -y vim libssl-dev pkg-config cmake
   echo "--- Initial setup complete ---"
 }
 
