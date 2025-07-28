@@ -26,7 +26,7 @@ run_initial_setup() {
 
   echo "--- Installing system dependencies ---"
   apt-get update
-apt-get install -y vim libssl-dev pkg-config cmake
+apt-get install -y vim libssl-dev pkg-config cmake netstat
   echo "--- Initial setup complete ---"
 }
 
