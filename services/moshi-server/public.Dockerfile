@@ -1,5 +1,5 @@
 # This is the public-facing version.
-FROM nvidia/cuda:12.1.0-devel-ubuntu22.04 AS base
+FROM nvidia/cuda:12.8.1-devel-ubuntu22.04 AS base
 
 # Set environment variables to avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -35,7 +35,8 @@ HEALTHCHECK --start-period=10m \
 EXPOSE 8080
 ENV RUST_BACKTRACE=1
 
-COPY pyproject.toml uv.lock ./
+RUN wget https://raw.githubusercontent.com/kyutai-labs/moshi/bf359af7694add34c13e65d2f009f0cb474d87cc/rust/moshi-server/pyproject.toml
+RUN wget https://raw.githubusercontent.com/kyutai-labs/moshi/bf359af7694add34c13e65d2f009f0cb474d87cc/rust/moshi-server/uv.lock
 
 COPY . .
 
