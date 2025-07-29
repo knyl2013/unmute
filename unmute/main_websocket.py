@@ -44,6 +44,7 @@ from unmute.kyutai_constants import (
     STT_SERVER,
     TTS_SERVER,
     VOICE_CLONING_SERVER,
+    KYUTAI_LLM_API_KEY
 )
 from unmute.service_discovery import async_ttl_cached
 from unmute.timer import Stopwatch
@@ -110,10 +111,13 @@ def _ws_to_http(ws_url: str) -> str:
     return ws_url.replace("ws://", "http://").replace("wss://", "https://")
 
 
-def _check_server_status(server_url: str) -> bool:
+def _check_server_status(server_url: str, api_key: str | None = None) -> bool:
     """Check if the server is up by sending a GET request."""
+    headers = {}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     try:
-        response = requests.get(server_url, timeout=2)
+        response = requests.get(server_url, headers=headers, timeout=2)
         logger.info(f"Response from {server_url}: {response}")
         return response.status_code == 200
     except requests.exceptions.RequestException as e:
@@ -159,7 +163,7 @@ async def _get_health(
         )
         llm_up = tg.create_task(
             asyncio.to_thread(
-                _check_server_status, _ws_to_http(LLM_SERVER) + "/v1/models"
+                _check_server_status, _ws_to_http(LLM_SERVER) + "/v1/models", KYUTAI_LLM_API_KEY
             )
         )
         voice_cloning_up = tg.create_task(
