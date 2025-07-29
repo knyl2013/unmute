@@ -118,7 +118,7 @@ class MistralStream:
 
 
 def get_openai_client(server_url: str = LLM_SERVER) -> AsyncOpenAI:
-    return AsyncOpenAI(api_key="EMPTY", base_url=server_url + "/v1")
+    return AsyncOpenAI(api_key=os.environ.get("KYUTAI_LLM_API_KEY"), base_url=server_url + "/v1")
 
 
 @cache

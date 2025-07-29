@@ -61,9 +61,14 @@ echo "Starting Backend..."
 wait_for_port 8000 "Backend"
 
 # 3. Start LLM Service
-echo "Starting LLM Service..."
-./dockerless/start_llm.sh &
-wait_for_port 8091 "LLM Service"
+if [ -z "$KYUTAI_LLM_URL" ]; then
+  echo "--> KYUTAI_LLM_URL is not set. Starting local LLM service..."
+  ./dockerless/start_llm.sh &
+  wait_for_port 8091 "LLM Service"
+else
+  echo "--> KYUTAI_LLM_URL is set to '$KYUTAI_LLM_URL'."
+  echo "--> Skipping local LLM service startup to save resources."
+fi
 
 # 4. Start STT (Speech-to-Text) Service
 echo "Starting STT Service..."
