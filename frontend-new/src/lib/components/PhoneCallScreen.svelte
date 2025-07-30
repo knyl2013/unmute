@@ -139,8 +139,8 @@
   <header class="header">
     <div class="callerInfo">
       <h1>{name}</h1>
-      <p style:visibility={isOngoing ? 'visible' : 'hidden'}>
-        {formatTime(callDuration)}
+      <p style:visibility={readyState === 'CONNECTING' || readyState === 'OPEN' ? 'visible' : 'hidden'}>
+        { readyState === 'CONNECTING' ? 'Connecting...' :  `${formatTime(callDuration)}` }
       </p>
     </div>
   </header>
