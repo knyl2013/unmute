@@ -11,12 +11,15 @@
   import { base64EncodeOpus } from '$lib/audioUtil';
   import type { ChatMessage } from '$lib/chatHistory';
 
+  import { now } from '$lib/stores';
+
   export let name: string = 'Anka';
   export let imageUrl: string = '/anka-profile.png';
   
   let isOngoing: boolean = false;
   let callDuration: number = 0;
   
+  let callStartTime: Date | null = null;
   let shouldConnect = false; // This is our main trigger for the connection
   let ws: WebSocket | null = null;
   let readyState: 'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED' = 'CLOSED';
@@ -65,6 +68,10 @@
     shouldConnect = false; 
     shutdownAudio();
   };
+
+  $: callDuration = callStartTime 
+    ? Math.round((($now.getTime() - callStartTime.getTime()) / 1000)) 
+    : 0;
 
   // It will automatically start/stop the interval when `isOngoing` changes.
   let timerId: any;
@@ -179,7 +186,14 @@
 
 <!-- The styles are scoped to this component by default. No special setup needed. -->
 <style>
-  /* You can copy the exact same CSS here. It just works. */
+  .error-text {
+    color: red;
+    position: absolute;
+    bottom: 20px;
+    width: 100%;
+    text-align: center;
+  }
+
   .callContainer {
     width: 375px;
     height: 100vh;
