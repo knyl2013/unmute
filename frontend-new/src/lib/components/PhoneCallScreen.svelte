@@ -73,21 +73,6 @@
     ? Math.round((($now.getTime() - callStartTime.getTime()) / 1000)) 
     : 0;
 
-  // It will automatically start/stop the interval when `isOngoing` changes.
-  let timerId: any;
-  $: {
-    if (isOngoing) {
-      // Start timer when call begins
-      timerId = setInterval(() => {
-        callDuration += 1;
-      }, 1000);
-    } else {
-      // Clear timer when call ends
-      if (timerId) clearInterval(timerId);
-      callDuration = 0;
-    }
-  }
-
   $: {
     const webSocketUrl = "ws://localhost:8000/v1/realtime"; // Replace with your backend URL
 
