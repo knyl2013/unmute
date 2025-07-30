@@ -1,97 +1,180 @@
 <!-- src/lib/components/PhoneCallScreen.svelte -->
-
 <script lang="ts">
   import { onMount } from 'svelte';
-
-  import FaVolumeUp from 'svelte-icons/fa/FaVolumeUp.svelte'
   import FaMicrophoneSlash from 'svelte-icons/fa/FaMicrophoneSlash.svelte'
-  import FaArrowLeft from 'svelte-icons/fa/FaArrowLeft.svelte'
   import FaPhoneSlash from 'svelte-icons/fa/FaPhoneSlash.svelte'
   import FaPhone from 'svelte-icons/fa/FaPhone.svelte'
+  
+  // These are plain TS/JS files you'll create in `src/lib`
+  import { useMicrophoneAccess } from '$lib/useMicrophoneAccess';
+  import { useAudioProcessor } from '$lib/useAudioProcessor';
+  import { base64EncodeOpus } from '$lib/audioUtil';
+  import type { ChatMessage } from '$lib/chatHistory';
 
-  // Props are declared with 'export let'. We can give them default values.
   export let name: string = 'Anka';
   export let imageUrl: string = '/anka-profile.png';
-  export let isOngoing: boolean = false;
+  
+  let isOngoing: boolean = false;
+  let callDuration: number = 0;
+  
+  let shouldConnect = false; // This is our main trigger for the connection
+  let ws: WebSocket | null = null;
+  let readyState: 'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED' = 'CLOSED';
+  let rawChatHistory: ChatMessage[] = []; // To store conversation text if needed
+  
+  // These functions are imported from the files you will create below.
+  const { askMicrophoneAccess, microphoneAccessStatus } = useMicrophoneAccess();
+  const { setupAudio, shutdownAudio, audioProcessor } = useAudioProcessor(onOpusRecorded);
 
-  // This is our reactive state. When it changes, the UI updates automatically.
-  let callDuration: number = 4;
-
-  // Helper function to format the time
   const formatTime = (totalSeconds: number) => {
     const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
     const seconds = (totalSeconds % 60).toString().padStart(2, '0');
     return `${minutes}:${seconds}`;
   };
 
+  function onOpusRecorded(opus: Uint8Array) {
+    if (ws && readyState === 'OPEN') {
+      ws.send(JSON.stringify({
+        type: "input_audio_buffer.append",
+        audio: base64EncodeOpus(opus),
+      }));
+    }
+  }
+
+  const handleStartCall = async () => {
+    // 1. Ask for microphone permission
+    const mediaStream = await askMicrophoneAccess();
+    
+    // 2. If we get permission, set up audio processing
+    if (mediaStream) {
+      await setupAudio(mediaStream);
+      isOngoing = true;
+      callDuration = 0;
+      // 3. Set our trigger to true. The reactive block below will handle the connection.
+      shouldConnect = true; 
+    } else {
+      // Handle the case where the user denies permission
+      console.error("Microphone access was denied.");
+      alert("You must allow microphone access to start the call.");
+    }
+  };
+
   const handleStopCall = () => {
     isOngoing = false;
-    callDuration = 0;
+    // Set the trigger to false. The reactive block will handle disconnection.
+    shouldConnect = false; 
+    shutdownAudio();
   };
 
-  const handleStartCall = () => {
-    isOngoing = true;
-    callDuration = 0; // Reset the duration when starting a new call
-  };
+  // It will automatically start/stop the interval when `isOngoing` changes.
+  let timerId: any;
+  $: {
+    if (isOngoing) {
+      // Start timer when call begins
+      timerId = setInterval(() => {
+        callDuration += 1;
+      }, 1000);
+    } else {
+      // Clear timer when call ends
+      if (timerId) clearInterval(timerId);
+      callDuration = 0;
+    }
+  }
 
-  // onMount is a lifecycle function that runs once the component is in the DOM.
-  // It's the perfect place for setting up intervals or fetching data.
-  onMount(() => {
-    const timerId = setInterval(() => {
-      // Svelte's reactivity: just update the variable! No setState needed.
-      callDuration += 1;
-    }, 1000);
+  $: {
+    const webSocketUrl = "ws://localhost:8000/v1/realtime"; // Replace with your backend URL
 
-    // The function returned from onMount runs when the component is destroyed.
-    // This is how we clean up the interval to prevent memory leaks.
-    return () => {
-      clearInterval(timerId);
-    };
-  });
+    if (shouldConnect && !ws) {
+      console.log("Connecting to WebSocket...");
+      readyState = 'CONNECTING';
+      const newWs = new WebSocket(webSocketUrl, ["realtime"]);
+
+      newWs.onopen = () => {
+        console.log("WebSocket connected!");
+        readyState = 'OPEN';
+        // Send initial configuration message once connected
+        newWs.send(JSON.stringify({
+          type: "session.update",
+          session: {
+            // Add any config you need, e.g., from the original React component
+            instructions: "You are a helpful assistant.",
+            voice: "eleven_labs/rachel", 
+            allow_recording: true,
+          },
+        }));
+      };
+
+      newWs.onmessage = (event) => {
+        // Here's where you handle messages from the server
+        const data = JSON.parse(event.data);
+        console.log("Received message:", data.type);
+        // Add your message handling logic here, e.g., playing audio
+      };
+
+      newWs.onclose = () => {
+        console.log("WebSocket disconnected.");
+        readyState = 'CLOSED';
+        ws = null;
+        // If the connection closes unexpectedly, update the UI state
+        if (isOngoing) {
+          handleStopCall();
+        }
+      };
+      
+      newWs.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        readyState = 'CLOSED';
+        ws = null;
+        if(isOngoing) {
+          handleStopCall();
+        }
+      };
+
+      ws = newWs;
+    } else if (!shouldConnect && ws) {
+      console.log("Disconnecting WebSocket...");
+      ws.close();
+      ws = null;
+      readyState = 'CLOSED';
+    }
+  }
 </script>
 
-<!-- The HTML markup is clean and straightforward -->
+<!-- The HTML markup is mostly unchanged -->
 <div class="callContainer">
-
-  <!-- Header Section -->
   <header class="header">
     <div class="callerInfo">
       <h1>{name}</h1>
-      <p
-        style:visibility={isOngoing ? 'visible' : 'hidden'}
-      >
+      <p style:visibility={isOngoing ? 'visible' : 'hidden'}>
         {formatTime(callDuration)}
       </p>
     </div>
   </header>
 
-  <!-- Main Content: Profile Picture -->
   <main class="mainContent">
     <div class="profileImageContainer">
       <img src={imageUrl} alt={name} class="profileImage" />
     </div>
   </main>
 
-  <!-- Footer: Action Buttons -->
   <footer class="footerControls">
-    { #if !isOngoing }
-      <button class="controlButton startCallButton" 
-        on:click={handleStartCall}
-      >
+    {#if !isOngoing}
+      <button class="controlButton startCallButton" on:click={handleStartCall}>
         <FaPhone />
       </button>
     {:else}
       <button class="controlButton">
         <FaMicrophoneSlash />
       </button>
-      <button class="controlButton endCallButton"
-        on:click={handleStopCall}
-      >
+      <button class="controlButton endCallButton" on:click={handleStopCall}>
         <FaPhoneSlash />
       </button>
     {/if}
-  </footer>
 
+    {#if $microphoneAccessStatus === 'denied'}
+      <p class="error-text">Microphone access denied. Please enable it in your browser settings.</p>
+    {/if}
+  </footer>
 </div>
 
 <!-- The styles are scoped to this component by default. No special setup needed. -->

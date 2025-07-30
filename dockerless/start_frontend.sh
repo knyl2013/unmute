@@ -2,7 +2,7 @@
 set -ex
 cd "$(dirname "$0")/.."
 
-cd frontend
+cd frontend-new
 pnpm install
 pnpm env use --global lts
 pnpm dev

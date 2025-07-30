@@ -5,5 +5,8 @@ export default defineConfig({
 	plugins: [sveltekit()],
 	ssr: {
         noExternal: ['svelte-icons']
+    },
+    server: {
+        port: 3000
     }
 });
