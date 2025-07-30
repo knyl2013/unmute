@@ -7,10 +7,12 @@
   import FaMicrophoneSlash from 'svelte-icons/fa/FaMicrophoneSlash.svelte'
   import FaArrowLeft from 'svelte-icons/fa/FaArrowLeft.svelte'
   import FaPhoneSlash from 'svelte-icons/fa/FaPhoneSlash.svelte'
+  import FaPhone from 'svelte-icons/fa/FaPhone.svelte'
 
   // Props are declared with 'export let'. We can give them default values.
   export let name: string = 'Anka';
   export let imageUrl: string = '/anka-profile.png';
+  export let isOngoing: boolean = false;
 
   // This is our reactive state. When it changes, the UI updates automatically.
   let callDuration: number = 4;
@@ -20,6 +22,16 @@
     const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
     const seconds = (totalSeconds % 60).toString().padStart(2, '0');
     return `${minutes}:${seconds}`;
+  };
+
+  const handleStopCall = () => {
+    isOngoing = false;
+    callDuration = 0;
+  };
+
+  const handleStartCall = () => {
+    isOngoing = true;
+    callDuration = 0; // Reset the duration when starting a new call
   };
 
   // onMount is a lifecycle function that runs once the component is in the DOM.
@@ -43,12 +55,13 @@
 
   <!-- Header Section -->
   <header class="header">
-    <button class="backButton" style="width: 32px; height: 32px">
-      <FaArrowLeft/>
-    </button>
     <div class="callerInfo">
       <h1>{name}</h1>
-      <p>{formatTime(callDuration)}</p>
+      <p
+        style:visibility={isOngoing ? 'visible' : 'hidden'}
+      >
+        {formatTime(callDuration)}
+      </p>
     </div>
   </header>
 
@@ -61,15 +74,22 @@
 
   <!-- Footer: Action Buttons -->
   <footer class="footerControls">
-    <button class="controlButton" style="width: 50px; height: 50px">
-      <FaVolumeUp />
-    </button>
-    <button class="controlButton" style="width: 50px; height: 50px">
-      <FaMicrophoneSlash />
-    </button>
-    <button class="controlButton endCallButton" style="width: 50px; height: 50px">
-      <FaPhoneSlash />
-    </button>
+    { #if !isOngoing }
+      <button class="controlButton startCallButton" 
+        on:click={handleStartCall}
+      >
+        <FaPhone />
+      </button>
+    {:else}
+      <button class="controlButton">
+        <FaMicrophoneSlash />
+      </button>
+      <button class="controlButton endCallButton"
+        on:click={handleStopCall}
+      >
+        <FaPhoneSlash />
+      </button>
+    {/if}
   </footer>
 
 </div>
@@ -149,8 +169,8 @@
   }
 
   .controlButton {
-    width: 70px;
-    height: 70px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
     background-color: rgba(255, 255, 255, 0.2);
     border: none;
@@ -166,11 +186,31 @@
     background-color: rgba(255, 255, 255, 0.4);
   }
 
+  .controlButton:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+
   .endCallButton {
     background-color: #ff3b30;
   }
 
   .endCallButton:active {
     background-color: #d93229;
+  }
+
+  .endCallButton:hover {
+    background-color: #ff5c5c;
+  }
+
+  .startCallButton {
+    background-color: #34c759;
+  }
+
+  .startCallButton:active {
+    background-color: #28a745;
+  }
+
+  .startCallButton:hover {
+    background-color: #45d160;
   }
 </style>
