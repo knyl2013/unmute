@@ -55,6 +55,7 @@
       callDuration = 0;
       // 3. Set our trigger to true. The reactive block below will handle the connection.
       shouldConnect = true; 
+      callStartTime = new Date();
     } else {
       // Handle the case where the user denies permission
       console.error("Microphone access was denied.");
@@ -65,8 +66,9 @@
   const handleStopCall = () => {
     isOngoing = false;
     // Set the trigger to false. The reactive block will handle disconnection.
-    shouldConnect = false; 
+    shouldConnect = false;
     shutdownAudio();
+    callStartTime = null;
   };
 
   $: callDuration = callStartTime 
