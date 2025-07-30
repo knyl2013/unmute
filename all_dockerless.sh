@@ -51,9 +51,9 @@ echo ""
 # --- Sequential Service Startup ---
 
 # 1. Start Frontend
-echo "Starting Frontend..."
-./dockerless/start_frontend.sh &
-wait_for_port 3000 "Frontend"
+# echo "Starting Frontend..."
+# ./dockerless/start_frontend.sh &
+# wait_for_port 3000 "Frontend"
 
 # 2. Start Backend
 echo "Starting Backend..."
