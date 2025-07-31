@@ -147,7 +147,6 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
   return {
     setupAudio,
     shutdownAudio,
-    // Exposing the state via a store is the idiomatic Svelte way.
-    processorStore: { subscribe } as Readable<AudioProcessor | null>
+    processorStore
   };
 }
