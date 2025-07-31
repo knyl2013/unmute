@@ -28,7 +28,7 @@
   let ws: WebSocket | null = null;
   let readyState: 'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED' = 'CLOSED';
   let rawChatHistory: ChatMessage[] = []; // To store conversation text if needed
-  
+  let isReady = false;
   let setupAudio: (mediaStream: MediaStream) => Promise<any>;
   let shutdownAudio: () => void;
   let processorStore: Writable<AudioProcessor | null>;
@@ -66,6 +66,10 @@
   }
 
   const handleStartCall = async () => {
+    if (!isReady || !setupAudio) {
+        console.warn("Audio processor is not ready yet.");
+        return; 
+    }
     // 1. Ask for microphone permission
     const mediaStream = await askMicrophoneAccess();
     
