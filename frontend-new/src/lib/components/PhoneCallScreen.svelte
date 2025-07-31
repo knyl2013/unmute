@@ -57,6 +57,7 @@
   };
 
   function onOpusRecorded(opus: Uint8Array) {
+    console.log(`[PhoneCallScreen] onOpusRecorded called. WS state: ${readyState}, opus size: ${opus.length}`);
     if (ws && readyState === 'OPEN') {
       ws.send(JSON.stringify({
         type: "input_audio_buffer.append",
