@@ -131,7 +131,7 @@
       newWs.onmessage = (event) => {
         // Here's where you handle messages from the server
         const data = JSON.parse(event.data);
-        console.log("Received message:", data.type);
+        console.log("Received message:", data);
         // Add your message handling logic here, e.g., playing audio
       };
 
