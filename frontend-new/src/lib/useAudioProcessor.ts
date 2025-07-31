@@ -43,19 +43,27 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
   // `setupAudio` is now a regular async function. No `useCallback` needed.
   const setupAudio = async (mediaStream: MediaStream): Promise<AudioProcessor | undefined> => {
     if (audioProcessor) return audioProcessor;
-
     const recorderOptions = {
+      mediaTrackConstraints: {
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: false,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+        video: false,
+      },
       encoderPath: "/encoderWorker.min.js",
-      encoderSampleRate: 48000, // Opus internal sample rate
+      bufferLength: 4096,
+      encoderFrameSize: 20,
+      encoderSampleRate: 24000,
+      maxFramesPerPage: 2,
       numberOfChannels: 1,
-      encoderApplication: 2049, // Voice
-      encoderFrameSize: 20, // 20ms
+      recordingGain: 1,
+      resampleQuality: 3,
+      encoderComplexity: 0,
+      encoderApplication: 2049,
       streamPages: true,
-      bufferLength: 4096, // Default buffer length
-      maxFramesPerPage: 40, // Default max frames per page
-      recordingGain: 1.0, // Default gain
-      resampleQuality: 0, // Default resample quality
-      encoderComplexity: 5 // Default encoder complexity
     };
 
     const opusRecorder = new OpusRecorder(recorderOptions);
