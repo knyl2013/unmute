@@ -1,6 +1,6 @@
+<!-- src/lib/components/UnmuteConfigurator.svelte -->
 <script lang="ts">
   import { onMount } from 'svelte';
-  // Import everything from our new shared file
   import {
     DEFAULT_UNMUTE_CONFIG,
     fetchVoices,
@@ -10,43 +10,25 @@
     type UnmuteConfig,
     type VoiceSample
   } from '$lib/config';
-
-  // Import child components (assuming you have converted them)
-  // import SquareButton from './SquareButton.svelte';
-  // import Modal from './Modal.svelte';
-  // import VoiceUpload from './VoiceUpload.svelte';
-  import { ArrowUpRight } from 'lucide-svelte';
-
+  // ... your other imports
 
   // --- PROPS ---
-  // This is the magic! `bind:config` in the parent will create a two-way binding.
-  // When we update `config` here, the parent's `unmuteConfig` will update automatically.
   export let config: UnmuteConfig;
-
   export let backendServerUrl: string;
   export let voiceCloningUp: boolean = false;
 
-
   // --- STATE ---
   let voices: VoiceSample[] | null = null;
-  let customInstructionsText = ''; // We'll bind the textarea to this
+  let customInstructionsText = '';
 
-  // --- DERIVED STATE (Reactive Statements) ---
-  // These are like `useMemo` in React. They re-run when their dependencies change.
-  $: activeVoice = voices?.find((v) => v.source.path_on_server === config.voice);
-  $: defaultInstructions = activeVoice?.instructions || DEFAULT_UNMUTE_CONFIG.instructions;
-
-  // --- LIFECYCLE (onMount is like useEffect with an empty dependency array) ---
+  // --- LIFECYCLE ---
   onMount(async () => {
     if (backendServerUrl) {
       const voicesData = await fetchVoices(backendServerUrl);
       voices = voicesData;
 
       if (voicesData.length > 0) {
-        // Set a random initial voice when the component loads
         const randomVoice = voicesData[Math.floor(Math.random() * voicesData.length)];
-        // THIS IS THE KEY: We assign to the bound `config` object.
-        // This updates the state in the parent PhoneCallScreen component.
         config = {
           voice: randomVoice.source.path_on_server,
           voiceName: getVoiceName(randomVoice),
@@ -57,31 +39,51 @@
     }
   });
 
-  // --- REACTIVE LOGIC (like useEffect with dependencies) ---
-  // This block runs whenever `customInstructionsText` changes.
-  $: {
-    const updatedInstructions: Instructions | null = customInstructionsText
-      ? { type: 'constant', text: customInstructionsText, language: 'en/fr' }
-      : null;
-    
-    // Update the main config object. Svelte's reactivity takes care of the rest.
-    config = {
-      ...config,
-      instructions: updatedInstructions || defaultInstructions,
-      isCustomInstructions: !!updatedInstructions,
-    };
-  }
-  
+  // --- DERIVED STATE & EVENT HANDLERS (THE FIX IS HERE) ---
+
+  // We no longer have separate reactive declarations for `activeVoice` and `defaultInstructions`.
+  // Instead, we calculate them when needed.
+
   function selectVoice(voice: VoiceSample) {
+    // Calculate the default instructions for the *newly selected* voice on the spot.
+    const newDefaultInstructions = voice.instructions || DEFAULT_UNMUTE_CONFIG.instructions;
+
     config = {
       // Keep existing custom instructions if they exist
       ...config,
       voice: voice.source.path_on_server,
       voiceName: getVoiceName(voice),
-      // If we are not using custom instructions, switch to the character's default instructions
-      instructions: config.isCustomInstructions ? config.instructions : (voice.instructions || defaultInstructions),
+      // If not using custom instructions, switch to the character's default.
+      instructions: config.isCustomInstructions ? config.instructions : newDefaultInstructions,
     }
   }
+
+  // This single reactive block now handles all updates related to the textarea.
+  // It runs whenever `customInstructionsText` or `voices` or `config.voice` changes.
+  $: {
+    // 1. Find the active voice and its default instructions inside the block.
+    // These are now temporary constants, not reactive state, which breaks the cycle.
+    const activeVoice = voices?.find((v) => v.source.path_on_server === config.voice);
+    const defaultInstructions = activeVoice?.instructions || DEFAULT_UNMUTE_CONFIG.instructions;
+
+    // 2. Determine the final instructions based on custom text.
+    const finalInstructions: Instructions = customInstructionsText
+      ? { type: 'constant', text: customInstructionsText, language: 'en/fr' }
+      : defaultInstructions;
+
+    // 3. Update the bound `config` object. This assignment is now safe.
+    // We check to avoid redundant updates if only the placeholder text would change.
+    if (config.instructions !== finalInstructions) {
+      config.instructions = finalInstructions;
+      config.isCustomInstructions = !!customInstructionsText;
+    }
+
+    // This also allows the placeholder to update when the voice changes.
+    placeholder = instructionsToPlaceholder(defaultInstructions);
+  }
+
+  // A separate state for the placeholder to avoid re-rendering the textarea on every keystroke.
+  let placeholder = instructionsToPlaceholder(DEFAULT_UNMUTE_CONFIG.instructions);
 
 </script>
 
@@ -91,14 +93,12 @@
   </div>
 {:else}
   <div class="w-full flex flex-col items-center">
-    <!-- UI Layout... this is a simplified version of the JSX -->
     <div class="w-full max-w-6xl p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
       <!-- Character Selection -->
       <div>
         <h2 class="text-lightgray mb-2">Character</h2>
         <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
           {#each voices as voice (voice.source.path_on_server)}
-            <!-- Assuming a SquareButton.svelte component exists -->
             <button
               on:click={() => selectVoice(voice)}
               class="p-2 border"
@@ -116,7 +116,7 @@
         <h2 class="text-lightgray mb-2">Instructions</h2>
         <textarea
           bind:value={customInstructionsText}
-          placeholder={instructionsToPlaceholder(defaultInstructions)}
+          {placeholder}
           class="bg-gray-800 text-white text-sm w-full p-2 resize-none h-32"
         />
       </div>
