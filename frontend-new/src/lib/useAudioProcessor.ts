@@ -44,26 +44,17 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
   const setupAudio = async (mediaStream: MediaStream): Promise<AudioProcessor | undefined> => {
     if (audioProcessor) return audioProcessor;
     const recorderOptions = {
-      mediaTrackConstraints: {
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: false,
-          autoGainControl: true,
-          channelCount: 1,
-        },
-        video: false,
-      },
       encoderPath: "/encoderWorker.min.js",
-      bufferLength: 4096,
-      encoderFrameSize: 20,
       encoderSampleRate: 24000,
-      maxFramesPerPage: 2,
       numberOfChannels: 1,
-      recordingGain: 1,
-      resampleQuality: 3,
-      encoderComplexity: 0,
-      encoderApplication: 2049,
+      encoderApplication: 2049, // For 'voice'
+      encoderFrameSize: 20,     // 20ms frame size
+      resampleQuality: 10,      // Max quality for resampling from hardware rate to 24kHz
       streamPages: true,
+      bufferLength: 4096,       // Default or suitable value
+      maxFramesPerPage: 40,     // Default or suitable value
+      recordingGain: 1.0,       // Default gain
+      encoderComplexity: 5      // Default or suitable value (0-10)
     };
 
     const opusRecorder = new OpusRecorder(recorderOptions);
