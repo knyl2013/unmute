@@ -92,6 +92,7 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
       encoderApplication: 2049, // Voice
       encoderFrameSize: 20, // 20ms
       streamPages: true,
+      audioContext: audioContext,
     };
 
     const opusRecorder = new OpusRecorder(recorderOptions);
