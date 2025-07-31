@@ -1,51 +1,153 @@
-// src/lib/useAudioProcessor.ts
+// src/lib/audioProcessor.ts
+import OpusRecorder from 'opus-recorder';
+import { readable, type Readable } from 'svelte/store';
 
-export function useAudioProcessor(onOpusRecorded: (opus: Uint8Array) => void) {
-  let audioContext: AudioContext | null = null;
-  let processorNode: AudioWorkletNode | null = null;
-  let mediaStreamSource: MediaStreamAudioSourceNode | null = null;
+// --- Helper function (can be kept private to this module) ---
+const getAudioWorkletNode = async (
+  audioContext: AudioContext,
+  name: string
+) => {
+  // This is a common pattern to avoid re-adding the module if it's already there.
+  try {
+    return new AudioWorkletNode(audioContext, name);
+  } catch (e) {
+    // IMPORTANT: This requires `/audio-output-processor.js` to be in your `/static` folder.
+    await audioContext.audioWorklet.addModule(`/${name}.js`);
+    return new AudioWorkletNode(audioContext, name, {});
+  }
+};
 
-  const setupAudio = async (mediaStream: MediaStream) => {
-    if (!audioContext) {
-      audioContext = new AudioContext({ sampleRate: 48000 });
-    }
-    
-    // Resume context if it's suspended (e.g., due to user interaction policy)
-    if (audioContext.state === 'suspended') {
-      await audioContext.resume();
-    }
-    
-    try {
-      // You must have an `opus-processor.js` in your `/static` or `/public` folder
-      await audioContext.audioWorklet.addModule('/opus-processor.js');
-    } catch (e) {
-      console.error('Failed to add audio worklet module', e);
-      return;
-    }
-    
-    processorNode = new AudioWorkletNode(audioContext, 'opus-processor');
-    mediaStreamSource = audioContext.createMediaStreamSource(mediaStream);
-    mediaStreamSource.connect(processorNode);
-    processorNode.connect(audioContext.destination); // Optional: if you want to hear yourself
 
-    processorNode.port.onmessage = (event) => {
-      if (event.data.type === 'opus') {
-        onOpusRecorded(event.data.opus);
-      }
-    };
-  };
+// --- The exported interface remains the same ---
+export interface AudioProcessor {
+  audioContext: AudioContext;
+  opusRecorder: OpusRecorder;
+  decoder: Worker;
+  outputWorklet: AudioWorkletNode;
+  inputAnalyser: AnalyserNode;
+  outputAnalyser: AnalyserNode;
+  mediaStreamDestination: MediaStreamAudioDestinationNode;
+}
 
-  const shutdownAudio = () => {
-    mediaStreamSource?.disconnect();
-    processorNode?.disconnect();
-    audioContext?.close().then(() => {
-      audioContext = null;
-      processorNode = null;
-      mediaStreamSource = null;
-    });
-  };
+
+// --- The Factory Function (replaces the React hook) ---
+export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
   
-  // Note: The original returned a ref. Here we don't need to, as the state
-  // is managed internally within this closure. We can just return the functions.
-  return { setupAudio, shutdownAudio, audioProcessor: { current: processorNode } };
+  // This `let` variable replaces `useRef`. It's part of the closure
+  // and will persist as long as the returned functions are in scope.
+  let audioProcessor: AudioProcessor | null = null;
+  
+  // A Svelte store to reactively broadcast the processor's state.
+  const { subscribe, set } = readable<AudioProcessor | null>(null);
+
+  // `setupAudio` is now a regular async function. No `useCallback` needed.
+  const setupAudio = async (mediaStream: MediaStream): Promise<AudioProcessor | undefined> => {
+    // If it's already set up, just return the existing instance.
+    if (audioProcessor) return audioProcessor;
+
+    const audioContext = new AudioContext({ sampleRate: 48000 }); // Opus works best at 48kHz
+    const outputWorklet = await getAudioWorkletNode(audioContext, "audio-output-processor");
+    
+    const source = audioContext.createMediaStreamSource(mediaStream);
+    const inputAnalyser = audioContext.createAnalyser();
+    inputAnalyser.fftSize = 2048;
+    source.connect(inputAnalyser);
+
+    const mediaStreamDestination = audioContext.createMediaStreamDestination();
+    outputWorklet.connect(mediaStreamDestination);
+    
+    // If you want to hear your own microphone (loopback)
+    // source.connect(mediaStreamDestination);
+
+    outputWorklet.connect(audioContext.destination);
+    const outputAnalyser = audioContext.createAnalyser();
+    outputAnalyser.fftSize = 2048;
+    outputWorklet.connect(outputAnalyser);
+
+    // IMPORTANT: This requires `/decoderWorker.min.js` to be in your `/static` folder.
+    const decoder = new Worker("/decoderWorker.min.js");
+    let micDuration = 0;
+
+    decoder.onmessage = (event: MessageEvent<any>) => {
+      if (!event.data) return;
+      outputWorklet.port.postMessage({
+        frame: event.data[0],
+        type: "audio",
+        micDuration: micDuration,
+      });
+    };
+    decoder.postMessage({
+        command: "init",
+        bufferLength: (960 * audioContext.sampleRate) / 24000,
+        decoderSampleRate: 24000,
+        outputBufferSampleRate: audioContext.sampleRate,
+        resampleQuality: 0,
+    });
+    
+    // IMPORTANT: This requires `/encoderWorker.min.js` to be in your `/static` folder.
+    const recorderOptions = {
+      encoderPath: "/encoderWorker.min.js",
+      encoderSampleRate: 48000, // Opus internal sample rate
+      numberOfChannels: 1,
+      encoderApplication: 2049, // Voice
+      encoderFrameSize: 20, // 20ms
+      streamPages: true,
+    };
+
+    const opusRecorder = new OpusRecorder(recorderOptions);
+
+    opusRecorder.ondataavailable = (data: Blob) => {
+      micDuration = opusRecorder.encodedSamplePosition / 48000;
+      // Convert Blob to Uint8Array to match the original function signature
+      data.arrayBuffer().then(buffer => {
+        onOpusRecorded(new Uint8Array(buffer));
+      });
+    };
+
+    // This assigns the created object to our closure variable.
+    audioProcessor = {
+      audioContext,
+      opusRecorder,
+      decoder,
+      outputWorklet,
+      inputAnalyser,
+      outputAnalyser,
+      mediaStreamDestination,
+    };
+    
+    // Update the store to notify subscribers.
+    set(audioProcessor);
+
+    // This is a new step. We need to connect the microphone source to the recorder.
+    source.connect(opusRecorder.workletNode);
+    
+    await audioContext.resume();
+    opusRecorder.start();
+
+    return audioProcessor;
+  };
+
+  // `shutdownAudio` is also just a regular function.
+  const shutdownAudio = () => {
+    if (audioProcessor) {
+      const { audioContext, opusRecorder, outputWorklet, decoder } = audioProcessor;
+      
+      opusRecorder.stop();
+      decoder.terminate();
+      outputWorklet.disconnect();
+      audioContext.close();
+      
+      // Clear the closure variable and update the store.
+      audioProcessor = null;
+      set(null);
+    }
+  };
+
+  // We return the control functions and the readable store.
+  return {
+    setupAudio,
+    shutdownAudio,
+    // Exposing the state via a store is the idiomatic Svelte way.
+    processorStore: { subscribe } as Readable<AudioProcessor | null>
+  };
 }

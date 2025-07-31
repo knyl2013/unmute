@@ -24,3 +24,7 @@ certs/
 volumes/
 CLAUDE.md
 .claude/settings.local.json
+
+**/node_modules/
+package-lock.json
+
