@@ -26,7 +26,7 @@
   let callStartTime: Date | null = null;
   let shouldConnect = false; // This is our main trigger for the connection
   let ws: WebSocket | null = null;
-  let readyState: 'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED' = 'CLOSED';
+  let readyState: 'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED' | 'FAILED' = 'CLOSED';
   let rawChatHistory: ChatMessage[] = []; // To store conversation text if needed
   let isReady = false;
   let setupAudio: (mediaStream: MediaStream) => Promise<any>;
@@ -95,6 +95,7 @@
     shouldConnect = false;
     shutdownAudio();
     callStartTime = null;
+    readyState = 'CLOSED';
   };
 
   $: analyserNode = $processorStore?.inputAnalyser;
@@ -135,7 +136,7 @@
 
       newWs.onclose = () => {
         console.log("WebSocket disconnected.");
-        readyState = 'CLOSED';
+        readyState = 'FAILED'; // Indicate failure to connect
         ws = null;
         // If the connection closes unexpectedly, update the UI state
         if (isOngoing) {
@@ -145,7 +146,7 @@
       
       newWs.onerror = (error) => {
         console.error("WebSocket error:", error);
-        readyState = 'CLOSED';
+        readyState = 'FAILED'; // Indicate failure to connect
         ws = null;
         if(isOngoing) {
           handleStopCall();
@@ -179,8 +180,12 @@
   <header class="header">
     <div class="callerInfo">
       <h1>{name}</h1>
-      <p style:visibility={readyState === 'CONNECTING' || readyState === 'OPEN' ? 'visible' : 'hidden'}>
-        { readyState === 'CONNECTING' ? 'Connecting...' :  `${formatTime(callDuration)}` }
+      <p style:visibility={readyState === 'CONNECTING' || readyState === 'OPEN' || readyState === 'FAILED' ? 'visible' : 'hidden'}>
+        { 
+          readyState === 'CONNECTING' ? 'Connecting...' :  
+          readyState === 'OPEN' ? `${formatTime(callDuration)}` :
+          readyState === 'FAILED' ? 'Connection failed. Please try again.' : ""
+        }
       </p>
     </div>
   </header>
