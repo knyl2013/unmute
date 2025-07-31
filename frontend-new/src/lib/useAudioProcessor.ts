@@ -1,6 +1,6 @@
 // src/lib/audioProcessor.ts
 import OpusRecorder from 'opus-recorder';
-import { readable, type Readable } from 'svelte/store';
+import { writable, type Readable } from 'svelte/store';
 
 // --- Helper function (can be kept private to this module) ---
 const getAudioWorkletNode = async (
@@ -38,7 +38,7 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
   let audioProcessor: AudioProcessor | null = null;
   
   // A Svelte store to reactively broadcast the processor's state.
-  const { subscribe, set } = readable<AudioProcessor | null>(null);
+  const processorStore = writable<AudioProcessor | null>(null);
 
   // `setupAudio` is now a regular async function. No `useCallback` needed.
   const setupAudio = async (mediaStream: MediaStream): Promise<AudioProcessor | undefined> => {
@@ -116,7 +116,7 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
     };
     
     // Update the store to notify subscribers.
-    set(audioProcessor);
+    processorStore.set(audioProcessor);
 
     // This is a new step. We need to connect the microphone source to the recorder.
     source.connect(opusRecorder.workletNode);
@@ -139,7 +139,7 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
       
       // Clear the closure variable and update the store.
       audioProcessor = null;
-      set(null);
+      processorStore.set(null);
     }
   };
 
