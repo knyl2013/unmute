@@ -75,6 +75,7 @@
     
     // 2. If we get permission, set up audio processing
     if (mediaStream) {
+      readyState = 'CONNECTING';
       await setupAudio(mediaStream);
       isOngoing = true;
       callDuration = 0;
