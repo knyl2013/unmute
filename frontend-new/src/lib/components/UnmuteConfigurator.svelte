@@ -1,93 +1,125 @@
-// src/lib/config.ts
+<script lang="ts">
+  import { onMount } from 'svelte';
+  // Import everything from our new shared file
+  import {
+    DEFAULT_UNMUTE_CONFIG,
+    fetchVoices,
+    getVoiceName,
+    instructionsToPlaceholder,
+    type Instructions,
+    type UnmuteConfig,
+    type VoiceSample
+  } from '$lib/config';
 
-// --- TYPE DEFINITIONS ---
-export type LanguageCode = "en" | "fr" | "en/fr" | "fr/en";
-
-export type ConstantInstructions = {
-  type: "constant";
-  text: string;
-  language?: LanguageCode;
-};
-
-export type Instructions =
-  | ConstantInstructions
-  | { type: "smalltalk"; language?: LanguageCode }
-  | { type: "guess_animal"; language?: LanguageCode }
-  | { type: "quiz_show"; language?: LanguageCode };
-
-export type UnmuteConfig = {
-  instructions: Instructions;
-  voice: string;
-  // The backend doesn't care about this, we use it for analytics
-  voiceName: string;
-  // The backend doesn't care about this, we use it for analytics
-  isCustomInstructions: boolean;
-};
-
-export type FreesoundVoiceSource = {
-  source_type: "freesound";
-  url: string;
-  start_time: number;
-  sound_instance: { id: number; name: string; username: string; license: string; };
-  path_on_server: string;
-};
-
-export type FileVoiceSource = {
-  source_type: "file";
-  path_on_server: string;
-  description?: string;
-  description_link?: string;
-};
-
-export type VoiceSample = {
-  name: string | null;
-  comment: string;
-  good: boolean;
-  instructions: Instructions | null;
-  source: FreesoundVoiceSource | FileVoiceSource;
-};
+  // Import child components (assuming you have converted them)
+  // import SquareButton from './SquareButton.svelte';
+  // import Modal from './Modal.svelte';
+  // import VoiceUpload from './VoiceUpload.svelte';
+  import { ArrowUpRight } from 'lucide-svelte';
 
 
-// --- CONSTANTS ---
-export const DEFAULT_UNMUTE_CONFIG: UnmuteConfig = {
-  instructions: { type: "smalltalk", language: "en/fr" },
-  voice: "barack_demo.wav",
-  voiceName: "Missing voice",
-  isCustomInstructions: false,
-};
+  // --- PROPS ---
+  // This is the magic! `bind:config` in the parent will create a two-way binding.
+  // When we update `config` here, the parent's `unmuteConfig` will update automatically.
+  export let config: UnmuteConfig;
+
+  export let backendServerUrl: string;
+  export let voiceCloningUp: boolean = false;
 
 
-// --- UTILITY FUNCTIONS ---
-export const instructionsToPlaceholder = (instructions: Instructions): string => {
-  if (instructions.type === "constant") {
-    return instructions.text;
-  }
-  return {
-    smalltalk: "Make pleasant conversation...",
-    guess_animal: "Make the user guess the animal...",
-    quiz_show: "You're a quiz show host that hates his job...",
-  }[instructions.type] || "";
-};
+  // --- STATE ---
+  let voices: VoiceSample[] | null = null;
+  let customInstructionsText = ''; // We'll bind the textarea to this
 
-export const fetchVoices = async (backendServerUrl: string): Promise<VoiceSample[]> => {
-  try {
-    const response = await fetch(`${backendServerUrl}/v1/voices`);
-    if (!response.ok) {
-      console.error("Failed to fetch voices:", response.statusText);
-      return [];
+  // --- DERIVED STATE (Reactive Statements) ---
+  // These are like `useMemo` in React. They re-run when their dependencies change.
+  $: activeVoice = voices?.find((v) => v.source.path_on_server === config.voice);
+  $: defaultInstructions = activeVoice?.instructions || DEFAULT_UNMUTE_CONFIG.instructions;
+
+  // --- LIFECYCLE (onMount is like useEffect with an empty dependency array) ---
+  onMount(async () => {
+    if (backendServerUrl) {
+      const voicesData = await fetchVoices(backendServerUrl);
+      voices = voicesData;
+
+      if (voicesData.length > 0) {
+        // Set a random initial voice when the component loads
+        const randomVoice = voicesData[Math.floor(Math.random() * voicesData.length)];
+        // THIS IS THE KEY: We assign to the bound `config` object.
+        // This updates the state in the parent PhoneCallScreen component.
+        config = {
+          voice: randomVoice.source.path_on_server,
+          voiceName: getVoiceName(randomVoice),
+          instructions: randomVoice.instructions || DEFAULT_UNMUTE_CONFIG.instructions,
+          isCustomInstructions: false,
+        };
+      }
     }
-    return await response.json();
-  } catch (error) {
-    console.error("Error fetching voices:", error);
-    return [];
-  }
-};
+  });
 
-export const getVoiceName = (voice: VoiceSample): string => {
-  return (
-    voice.name ||
-    (voice.source.source_type === "freesound"
-      ? voice.source.sound_instance.username
-      : voice.source.path_on_server.slice(0, 10))
-  );
-};
+  // --- REACTIVE LOGIC (like useEffect with dependencies) ---
+  // This block runs whenever `customInstructionsText` changes.
+  $: {
+    const updatedInstructions: Instructions | null = customInstructionsText
+      ? { type: 'constant', text: customInstructionsText, language: 'en/fr' }
+      : null;
+    
+    // Update the main config object. Svelte's reactivity takes care of the rest.
+    config = {
+      ...config,
+      instructions: updatedInstructions || defaultInstructions,
+      isCustomInstructions: !!updatedInstructions,
+    };
+  }
+  
+  function selectVoice(voice: VoiceSample) {
+    config = {
+      // Keep existing custom instructions if they exist
+      ...config,
+      voice: voice.source.path_on_server,
+      voiceName: getVoiceName(voice),
+      // If we are not using custom instructions, switch to the character's default instructions
+      instructions: config.isCustomInstructions ? config.instructions : (voice.instructions || defaultInstructions),
+    }
+  }
+
+</script>
+
+{#if !voices}
+  <div class="w-full">
+    <p class="text-lightgray">Loading characters...</p>
+  </div>
+{:else}
+  <div class="w-full flex flex-col items-center">
+    <!-- UI Layout... this is a simplified version of the JSX -->
+    <div class="w-full max-w-6xl p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+      <!-- Character Selection -->
+      <div>
+        <h2 class="text-lightgray mb-2">Character</h2>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {#each voices as voice (voice.source.path_on_server)}
+            <!-- Assuming a SquareButton.svelte component exists -->
+            <button
+              on:click={() => selectVoice(voice)}
+              class="p-2 border"
+              class:bg-blue-500={voice.source.path_on_server === config.voice}
+              class:text-white={voice.source.path_on_server === config.voice}
+            >
+              / {getVoiceName(voice)} /
+            </button>
+          {/each}
+        </div>
+      </div>
+
+      <!-- Instructions Textarea -->
+      <div>
+        <h2 class="text-lightgray mb-2">Instructions</h2>
+        <textarea
+          bind:value={customInstructionsText}
+          placeholder={instructionsToPlaceholder(defaultInstructions)}
+          class="bg-gray-800 text-white text-sm w-full p-2 resize-none h-32"
+        />
+      </div>
+    </div>
+  </div>
+{/if}
