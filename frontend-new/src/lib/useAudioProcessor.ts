@@ -96,6 +96,8 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
 
     const opusRecorder = new OpusRecorder(recorderOptions);
 
+    await opusRecorder.initialize;
+
     opusRecorder.ondataavailable = (data: Blob) => {
       micDuration = opusRecorder.encodedSamplePosition / 48000;
       // Convert Blob to Uint8Array to match the original function signature
@@ -119,7 +121,7 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
     processorStore.set(audioProcessor);
 
     // This is a new step. We need to connect the microphone source to the recorder.
-    source.connect(opusRecorder.workletNode);
+    source.connect(opusRecorder.encoderNode);
     
     await audioContext.resume();
     opusRecorder.start();
