@@ -42,7 +42,6 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
 
   // `setupAudio` is now a regular async function. No `useCallback` needed.
   const setupAudio = async (mediaStream: MediaStream): Promise<AudioProcessor | undefined> => {
-    // If it's already set up, just return the existing instance.
     if (audioProcessor) return audioProcessor;
 
     const audioContext = new AudioContext({ sampleRate: 48000 }); // Opus works best at 48kHz
@@ -93,18 +92,20 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
       encoderFrameSize: 20, // 20ms
       streamPages: true,
       audioContext: audioContext,
+      bufferLength: 4096, // Default buffer length
+      maxFramesPerPage: 40, // Default max frames per page
+      recordingGain: 1.0, // Default gain
+      resampleQuality: 0, // Default resample quality
+      encoderComplexity: 5 // Default encoder complexity
     };
 
     const opusRecorder = new OpusRecorder(recorderOptions);
 
     await opusRecorder.initialize;
 
-    opusRecorder.ondataavailable = (data: Blob) => {
+    opusRecorder.ondataavailable = (data: Uint8Array) => {
       micDuration = opusRecorder.encodedSamplePosition / 48000;
-      // Convert Blob to Uint8Array to match the original function signature
-      data.arrayBuffer().then(buffer => {
-        onOpusRecorded(new Uint8Array(buffer));
-      });
+      onOpusRecorded(data);
     };
 
     // This assigns the created object to our closure variable.
