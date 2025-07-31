@@ -44,7 +44,31 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
   const setupAudio = async (mediaStream: MediaStream): Promise<AudioProcessor | undefined> => {
     if (audioProcessor) return audioProcessor;
 
-    const audioContext = new AudioContext({ sampleRate: 48000 }); // Opus works best at 48kHz
+    const recorderOptions = {
+      encoderPath: "/encoderWorker.min.js",
+      encoderSampleRate: 48000, // Opus internal sample rate
+      numberOfChannels: 1,
+      encoderApplication: 2049, // Voice
+      encoderFrameSize: 20, // 20ms
+      streamPages: true,
+      bufferLength: 4096, // Default buffer length
+      maxFramesPerPage: 40, // Default max frames per page
+      recordingGain: 1.0, // Default gain
+      resampleQuality: 0, // Default resample quality
+      encoderComplexity: 5 // Default encoder complexity
+    };
+
+    const opusRecorder = new OpusRecorder(recorderOptions);
+
+    await opusRecorder.initialize;
+
+    const audioContext = opusRecorder.audioContext;
+
+    opusRecorder.ondataavailable = (data: Uint8Array) => {
+      micDuration = opusRecorder.encodedSamplePosition / 48000;
+      onOpusRecorded(data);
+    };
+
     const outputWorklet = await getAudioWorkletNode(audioContext, "audio-output-processor");
     
     const source = audioContext.createMediaStreamSource(mediaStream);
@@ -63,7 +87,6 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
     outputAnalyser.fftSize = 2048;
     outputWorklet.connect(outputAnalyser);
 
-    // IMPORTANT: This requires `/decoderWorker.min.js` to be in your `/static` folder.
     const decoder = new Worker("/decoderWorker.min.js");
     let micDuration = 0;
 
@@ -83,31 +106,6 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
         resampleQuality: 0,
     });
     
-    // IMPORTANT: This requires `/encoderWorker.min.js` to be in your `/static` folder.
-    const recorderOptions = {
-      encoderPath: "/encoderWorker.min.js",
-      encoderSampleRate: 48000, // Opus internal sample rate
-      numberOfChannels: 1,
-      encoderApplication: 2049, // Voice
-      encoderFrameSize: 20, // 20ms
-      streamPages: true,
-      audioContext: audioContext,
-      bufferLength: 4096, // Default buffer length
-      maxFramesPerPage: 40, // Default max frames per page
-      recordingGain: 1.0, // Default gain
-      resampleQuality: 0, // Default resample quality
-      encoderComplexity: 5 // Default encoder complexity
-    };
-
-    const opusRecorder = new OpusRecorder(recorderOptions);
-
-    await opusRecorder.initialize;
-
-    opusRecorder.ondataavailable = (data: Uint8Array) => {
-      micDuration = opusRecorder.encodedSamplePosition / 48000;
-      onOpusRecorded(data);
-    };
-
     // This assigns the created object to our closure variable.
     audioProcessor = {
       audioContext,
