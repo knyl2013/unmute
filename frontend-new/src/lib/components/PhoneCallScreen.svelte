@@ -29,9 +29,26 @@
   let readyState: 'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED' = 'CLOSED';
   let rawChatHistory: ChatMessage[] = []; // To store conversation text if needed
   
+  let setupAudio: (mediaStream: MediaStream) => Promise<any>;
+  let shutdownAudio: () => void;
+  let processorStore: Writable<AudioProcessor | null>;
+
+  onMount(() => {
+    const audioProcessor = createAudioProcessor(onOpusRecorded);
+    
+    setupAudio = audioProcessor.setupAudio;
+    shutdownAudio = audioProcessor.shutdownAudio;
+    processorStore = audioProcessor.processorStore;
+    
+    isReady = true;
+
+    return () => {
+      if (shutdownAudio) shutdownAudio();
+    };
+  });
+
   // These functions are imported from the files you will create below.
   const { askMicrophoneAccess, microphoneAccessStatus } = useMicrophoneAccess();
-  const { setupAudio, shutdownAudio, audioProcessor } = useAudioProcessor(onOpusRecorded);
 
   const formatTime = (totalSeconds: number) => {
     const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
@@ -74,6 +91,8 @@
     shutdownAudio();
     callStartTime = null;
   };
+
+  $: analyserNode = $processorStore?.inputAnalyser;
 
   $: callDuration = callStartTime 
     ? Math.round((($now.getTime() - callStartTime.getTime()) / 1000)) 
