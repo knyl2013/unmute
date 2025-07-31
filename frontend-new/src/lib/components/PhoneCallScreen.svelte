@@ -34,7 +34,7 @@
   let processorStore: Writable<AudioProcessor | null>;
 
   onMount(() => {
-    const audioProcessor = createAudioProcessor(onOpusRecorded);
+    const audioProcessor = useAudioProcessor(onOpusRecorded);
     
     setupAudio = audioProcessor.setupAudio;
     shutdownAudio = audioProcessor.shutdownAudio;
