@@ -5,6 +5,9 @@
   import FaPhoneSlash from 'svelte-icons/fa/FaPhoneSlash.svelte'
   import FaPhone from 'svelte-icons/fa/FaPhone.svelte'
   
+  import UnmuteConfigurator from '$lib/components/UnmuteConfigurator.svelte';
+  import { DEFAULT_UNMUTE_CONFIG, type UnmuteConfig } from '$lib/config';
+
   // These are plain TS/JS files you'll create in `src/lib`
   import { useMicrophoneAccess } from '$lib/useMicrophoneAccess';
   import { useAudioProcessor } from '$lib/useAudioProcessor';
@@ -19,6 +22,7 @@
   let isOngoing: boolean = false;
   let callDuration: number = 0;
   
+  let unmuteConfig: UnmuteConfig = DEFAULT_UNMUTE_CONFIG;
   let callStartTime: Date | null = null;
   let shouldConnect = false; // This is our main trigger for the connection
   let ws: WebSocket | null = null;
@@ -87,12 +91,12 @@
         console.log("WebSocket connected!");
         readyState = 'OPEN';
         // Send initial configuration message once connected
+        console.log("WebSocket connected! Sending config:", unmuteConfig);
         newWs.send(JSON.stringify({
           type: "session.update",
           session: {
-            // Add any config you need, e.g., from the original React component
-            instructions: "You are a helpful assistant.",
-            voice: "eleven_labs/rachel", 
+            instructions: unmuteConfig.instructions,
+            voice: unmuteConfig.voice,
             allow_recording: true,
           },
         }));
@@ -131,6 +135,18 @@
       ws = null;
       readyState = 'CLOSED';
     }
+  }
+
+  $: if (unmuteConfig && isOngoing && ws && readyState === 'OPEN') {
+    console.log("Config changed mid-call. Sending update:", unmuteConfig);
+    ws.send(JSON.stringify({
+      type: "session.update",
+      session: {
+        instructions: unmuteConfig.instructions,
+        voice: unmuteConfig.voice,
+        allow_recording: true,
+      },
+    }));
   }
 </script>
 
