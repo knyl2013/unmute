@@ -17,6 +17,8 @@ declare module "opus-recorder" {
   }
 
   export default class Recorder {
+    encoderNode: AudioNode;
+    initialize: any;
     constructor(options: RecorderOptions);
     start(): void;
     stop(): void;
