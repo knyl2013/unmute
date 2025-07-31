@@ -64,7 +64,9 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
 
     const audioContext = opusRecorder.audioContext;
 
+    let packetCount = 0;
     opusRecorder.ondataavailable = (data: Uint8Array) => {
+      console.log(`Packet ${packetCount++} recorded, size: ${data.length}`);
       micDuration = opusRecorder.encodedSamplePosition / 48000;
       onOpusRecorded(data);
     };
