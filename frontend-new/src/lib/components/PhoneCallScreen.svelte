@@ -136,7 +136,6 @@
 
       newWs.onclose = () => {
         console.log("WebSocket disconnected.");
-        readyState = 'FAILED'; // Indicate failure to connect
         ws = null;
         // If the connection closes unexpectedly, update the UI state
         if (isOngoing) {
