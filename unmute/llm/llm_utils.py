@@ -9,7 +9,7 @@ from openai import AsyncOpenAI, OpenAI
 from logging import getLogger
 from unmute.kyutai_constants import LLM_SERVER
 
-from ..kyutai_constants import KYUTAI_LLM_MODEL, KYUTAI_LLM_API_KEY
+from ..kyutai_constants import KYUTAI_LLM_API_KEY, KYUTAI_LLM_MODEL
 
 INTERRUPTION_CHAR = "—"  # em-dash
 USER_SILENCE_MARKER = "..."
@@ -118,8 +118,10 @@ class MistralStream:
             yield delta
 
 
-def get_openai_client(server_url: str = LLM_SERVER, api_key: str = KYUTAI_LLM_API_KEY) -> AsyncOpenAI:
-    return AsyncOpenAI(api_key=api_key, base_url=server_url)
+def get_openai_client(
+    server_url: str = LLM_SERVER, api_key: str | None = KYUTAI_LLM_API_KEY
+) -> AsyncOpenAI:
+    return AsyncOpenAI(api_key=api_key, base_url=server_url + "/v1")
 
 
 @cache
@@ -127,7 +129,6 @@ def autoselect_model() -> str:
     if KYUTAI_LLM_MODEL is not None:
         return KYUTAI_LLM_MODEL
     openai_client = get_openai_client()
-    logger.info("Autoselecting model from OpenAI API" + str(openai_client.base_url))
     client_sync = OpenAI(api_key=openai_client.api_key, base_url=openai_client.base_url)
     models = client_sync.models.list()
     if len(models.data) != 1:
