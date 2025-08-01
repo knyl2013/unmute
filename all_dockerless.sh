@@ -56,9 +56,9 @@ echo ""
 # wait_for_port 3000 "Frontend"
 
 # 2. Start Backend
-echo "Starting Backend..."
-./dockerless/start_backend.sh &
-wait_for_port 8000 "Backend"
+# echo "Starting Backend..."
+# ./dockerless/start_backend.sh &
+# wait_for_port 8000 "Backend"
 
 # 3. Start LLM Service
 if [ -z "$KYUTAI_LLM_URL" ]; then
