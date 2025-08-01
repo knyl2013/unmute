@@ -85,25 +85,12 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
     });
 
     const recorderOptions = {
-      mediaTrackConstraints: {
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: false,
-          autoGainControl: true,
-          channelCount: 1,
-        },
-        video: false,
-      },
       encoderPath: "/encoderWorker.min.js",
-      bufferLength: Math.round((960 * audioContext.sampleRate) / 24000),
-      encoderFrameSize: 20,
-      encoderSampleRate: 24000,
-      maxFramesPerPage: 2,
-      numberOfChannels: 1,
-      recordingGain: 1,
-      resampleQuality: 3,
-      encoderComplexity: 0,
-      encoderApplication: 2049,
+      encoderSampleRate: 24000,      // Required: 24kHz
+      numberOfChannels: 1,           // Required: Mono
+      encoderApplication: 2049,      // 'voice' application is best for this use case
+      encoderFrameSize: 20,          // Standard frame size for real-time audio
+      resampleQuality: 10,           // Use max quality to downsample from mic hardware rate to 24kHz
       streamPages: true,
     };
     
