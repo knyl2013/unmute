@@ -113,9 +113,7 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
     // The library actually passes a Blob. We correctly handle the conversion.
     opusRecorder.ondataavailable = (data: Blob) => {
       micDuration = opusRecorder.encodedSamplePosition / 48000;
-      data.arrayBuffer().then(buffer => {
-        onOpusRecorded(new Uint8Array(buffer));
-      });
+      onOpusRecorded(data);
     };
     
     // We now must await initialization and connect the source node.
