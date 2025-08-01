@@ -145,6 +145,8 @@ def with_samples_since_start(
 
 
 def process_events(recorder_events: list[RecorderEvent]) -> list[StepEvents]:
+    logger.info(recorder_event)
+
     step_events: dict[int, StepEvents] = {}
     # other_events for a given timestamp might be created before we've created the
     # corresponding step event, so collect them in a separate dict and then merge them
