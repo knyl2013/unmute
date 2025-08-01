@@ -278,6 +278,7 @@ class UnmuteHandler(AsyncStreamHandler):
         return self.n_samples_received / self.input_sample_rate
 
     async def receive(self, frame: tuple[int, np.ndarray]) -> None:
+        logger.info(f"UnmuteHandler received frame: {frame}")   
         stt = self.stt
         assert stt is not None
         sr = frame[0]
