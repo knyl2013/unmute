@@ -6,13 +6,14 @@ from typing import Any, AsyncIterator, Protocol, cast
 
 from mistralai import Mistral
 from openai import AsyncOpenAI, OpenAI
-
+from logging import getLogger
 from unmute.kyutai_constants import LLM_SERVER
 
 from ..kyutai_constants import KYUTAI_LLM_MODEL, KYUTAI_LLM_API_KEY
 
 INTERRUPTION_CHAR = "—"  # em-dash
 USER_SILENCE_MARKER = "..."
+logger = getLogger(__name__)
 
 
 def preprocess_messages_for_llm(
