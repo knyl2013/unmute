@@ -122,11 +122,19 @@
         newWs.send(JSON.stringify({
           type: "session.update",
           session: {
-            instructions: unmuteConfig.instructions,
-            voice: unmuteConfig.voice,
+            instructions: {"type":"unmute_explanation"},
+            voice: "unmute-prod-website/ex04_narration_longform_00001.wav",
             allow_recording: true,
           },
         }));
+        // newWs.send(JSON.stringify({
+        //   type: "session.update",
+        //   session: {
+        //     instructions: unmuteConfig.instructions,
+        //     voice: unmuteConfig.voice,
+        //     allow_recording: true,
+        //   },
+        // }));
       };
 
       newWs.onmessage = (event) => {
