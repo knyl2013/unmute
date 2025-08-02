@@ -473,7 +473,7 @@ async def receive_loop(
             if pcm.size:
                 await handler.receive((SAMPLE_RATE, pcm[np.newaxis, :]))
 
-            log.info(
+            logger.info(
                 f"Received {pcm.size} samples of audio data, "
                 f"first packet: {not wait_for_first_opus}"
             )
