@@ -444,7 +444,7 @@ async def receive_loop(
 
         message_to_record = message
         # Debug
-        logger.info(f"Received message: {message}, " + str(isinstance(message, ora.InputAudioBufferAppend)))
+        # logger.info(f"Received message: {message}, " + str(isinstance(message, ora.InputAudioBufferAppend)))
 
         if isinstance(message, ora.InputAudioBufferAppend):
             opus_bytes = base64.b64decode(message.audio)
@@ -464,6 +464,11 @@ async def receive_loop(
 
             if pcm.size:
                 await handler.receive((SAMPLE_RATE, pcm[np.newaxis, :]))
+
+            log.info(
+                f"Received {pcm.size} samples of audio data, "
+                f"first packet: {not wait_for_first_opus}"
+            )
         elif isinstance(message, ora.SessionUpdate):
             await handler.update_session(message.session)
             await emit_queue.put(ora.SessionUpdated(session=message.session))
