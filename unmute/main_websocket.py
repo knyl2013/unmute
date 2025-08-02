@@ -443,7 +443,8 @@ async def receive_loop(
             continue
 
         message_to_record = message
-        logger.info(f"Received message: {message}")
+        # Debug
+        logger.info(f"Received message: {message}, " + str(isinstance(message, ora.InputAudioBufferAppend)))
 
         if isinstance(message, ora.InputAudioBufferAppend):
             opus_bytes = base64.b64decode(message.audio)
