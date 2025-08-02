@@ -448,7 +448,7 @@ async def receive_loop(
 
         if isinstance(message, ora.InputAudioBufferAppend):
             opus_bytes = base64.b64decode(message.audio)
-            log.info(
+            logger.info(
                 f"Received {len(opus_bytes)} bytes of audio data, "
                 f"first packet: {wait_for_first_opus}"
             )
@@ -460,12 +460,12 @@ async def receive_loop(
                     wait_for_first_opus = False
                 else:
                     continue
-            log.info(
+            logger.info(
                 f"Received {len(opus_bytes)} bytes of audio data, "
                 f"first packet: {not wait_for_first_opus}"
             )
             pcm = await asyncio.to_thread(opus_reader.append_bytes, opus_bytes)
-            log.info(f"Decoded {pcm.size} samples of audio data")
+            logger.info(f"Decoded {pcm.size} samples of audio data")
             message_to_record = ora.UnmuteInputAudioBufferAppendAnonymized(
                 number_of_samples=pcm.size,
             )
