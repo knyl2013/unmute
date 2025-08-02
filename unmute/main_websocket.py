@@ -452,14 +452,14 @@ async def receive_loop(
                 f"Received {len(opus_bytes)} bytes of audio data, "
                 f"first packet: {wait_for_first_opus}"
             )
-            if wait_for_first_opus:
-                # Somehow the UI is sending us potentially old messages from a previous
-                # connection on reconnect, so that we might get some old OGG packets,
-                # waiting for the bit set for first packet to feed to the decoder.
-                if opus_bytes[5] & 2:
-                    wait_for_first_opus = False
-                else:
-                    continue
+            # if wait_for_first_opus:
+            #     # Somehow the UI is sending us potentially old messages from a previous
+            #     # connection on reconnect, so that we might get some old OGG packets,
+            #     # waiting for the bit set for first packet to feed to the decoder.
+            #     if opus_bytes[5] & 2:
+            #         wait_for_first_opus = False
+            #     else:
+            #         continue
             logger.info(
                 f"Received {len(opus_bytes)} bytes of audio data, "
                 f"first packet: {not wait_for_first_opus}"
