@@ -10,7 +10,7 @@
 
   // These are plain TS/JS files you'll create in `src/lib`
   import { useMicrophoneAccess } from '$lib/useMicrophoneAccess';
-  import { useAudioProcessor } from '$lib/useAudioProcessor';
+  import { useAudioProcessor, type AudioProcessor } from '$lib/useAudioProcessor';
   import { base64DecodeOpus, base64EncodeOpus } from '$lib/audioUtil';
   import type { ChatMessage } from '$lib/chatHistory';
 
@@ -30,10 +30,11 @@
   let readyState: 'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED' | 'FAILED' = 'CLOSED';
   let rawChatHistory: ChatMessage[] = []; // To store conversation text if needed
   let isReady = false;
-  let setupAudio: (mediaStream: MediaStream) => Promise<any>;
+  let setupAudio: (mediaStream: MediaStream) => Promise<AudioProcessor | undefined>;
   let shutdownAudio: () => void;
   let processorStore: Writable<AudioProcessor | null>;
   let player: StreamingAudioPlayer;
+  let audioProcessorMain: AudioProcessor | undefined;
 
   onMount(() => {
     const audioProcessor = useAudioProcessor(onOpusRecorded);
@@ -41,7 +42,7 @@
     setupAudio = audioProcessor.setupAudio;
     shutdownAudio = audioProcessor.shutdownAudio;
     processorStore = audioProcessor.processorStore;
-    
+
     isReady = true;
 
     player = new StreamingAudioPlayer();
@@ -82,7 +83,7 @@
     // 2. If we get permission, set up audio processing
     if (mediaStream) {
       readyState = 'CONNECTING';
-      await setupAudio(mediaStream);
+      audioProcessorMain = await setupAudio(mediaStream);
       isOngoing = true;
       callDuration = 0;
       // 3. Set our trigger to true. The reactive block below will handle the connection.
@@ -149,7 +150,7 @@
           if (message.delta) {
             // player.addChunk(message.delta);
             const opus = base64DecodeOpus(message.delta);
-            const ap = processorStore;
+            const ap = audioProcessorMain;
             console.log(ap);
             if (!ap) return;
 
