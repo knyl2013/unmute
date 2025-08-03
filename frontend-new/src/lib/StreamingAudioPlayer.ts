@@ -25,7 +25,7 @@ export class StreamingAudioPlayer {
       console.log('MediaSource opened.');
       this.isSourceOpen = true;
 
-      const mime = 'audio/webm; codecs=opus';
+      const mime = 'audio/webm; codecs=vp8,opus';
 
       if (!MediaSource.isTypeSupported(mime)) {
         console.error(`Unsupported MIME type: ${mime}`);
