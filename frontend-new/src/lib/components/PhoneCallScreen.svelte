@@ -113,7 +113,7 @@
     : 0;
 
   $: {
-    const webSocketUrl = "ws://localhost:8000/v1/realtime"; // Replace with your backend URL
+    const webSocketUrl = "ws://localhost:8000/v1/realtime";
 
     if (shouldConnect && !ws) {
       console.log("Connecting to WebSocket...");
@@ -133,22 +133,12 @@
             allow_recording: true,
           },
         }));
-        // newWs.send(JSON.stringify({
-        //   type: "session.update",
-        //   session: {
-        //     instructions: unmuteConfig.instructions,
-        //     voice: unmuteConfig.voice,
-        //     allow_recording: true,
-        //   },
-        // }));
       };
 
       newWs.onmessage = (event) => {
         const message = JSON.parse(event.data);
-        // console.log("Received message:", message);
         if (message.type === 'response.audio.delta') {
           if (message.delta) {
-            // player.addChunk(message.delta);
             const opus = base64DecodeOpus(message.delta);
             const ap = audioProcessorMain;
             console.log(ap);
