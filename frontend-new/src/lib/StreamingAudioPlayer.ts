@@ -66,12 +66,12 @@ export class StreamingAudioPlayer {
 
     // Start playback if this is the first chunk and context is ready
     console.log(this.audioContext.state, this.isPlaying);
-    if (!this.isPlaying && this.audioContext.state === 'suspended') {
+    if (this.audioContext.state === 'suspended') {
       this.audioContext.resume().then(() => {
         this.audioElement.play();
         this.isPlaying = true;
       });
-    } else if (!this.isPlaying && this.audioContext.state === 'running') {
+    } else if (this.audioContext.state === 'running') {
       this.audioElement.play();
       this.isPlaying = true;
     }
