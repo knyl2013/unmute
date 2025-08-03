@@ -65,6 +65,7 @@ export class StreamingAudioPlayer {
     this.audioQueue.push(chunk);
 
     // Start playback if this is the first chunk and context is ready
+    console.log(this.audioContext.state, this.isPlaying);
     if (!this.isPlaying && this.audioContext.state === 'suspended') {
       this.audioContext.resume().then(() => {
         this.audioElement.play();
