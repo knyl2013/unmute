@@ -25,8 +25,7 @@ export class StreamingAudioPlayer {
       console.log('MediaSource opened.');
       this.isSourceOpen = true;
 
-      // The MIME type for Ogg container with Opus codec.
-      const mime = 'audio/ogg; codecs=opus';
+      const mime = 'audio/webm; codecs=opus';
 
       if (!MediaSource.isTypeSupported(mime)) {
         console.error(`Unsupported MIME type: ${mime}`);
