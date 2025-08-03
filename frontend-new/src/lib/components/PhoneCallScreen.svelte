@@ -11,7 +11,7 @@
   // These are plain TS/JS files you'll create in `src/lib`
   import { useMicrophoneAccess } from '$lib/useMicrophoneAccess';
   import { useAudioProcessor } from '$lib/useAudioProcessor';
-  import { base64EncodeOpus } from '$lib/audioUtil';
+  import { base64DecodeOpus, base64EncodeOpus } from '$lib/audioUtil';
   import type { ChatMessage } from '$lib/chatHistory';
 
   import { now } from '$lib/stores';
@@ -147,7 +147,18 @@
         // console.log("Received message:", message);
         if (message.type === 'response.audio.delta') {
           if (message.delta) {
-            player.addChunk(message.delta);
+            // player.addChunk(message.delta);
+            const opus = base64DecodeOpus(message.delta);
+            const ap = processorStore.current;
+            if (!ap) return;
+
+            ap.decoder.postMessage(
+              {
+                command: "decode",
+                pages: opus,
+              },
+              [opus.buffer]
+            );
           } else {
             console.log('Received response.audio.delta but message.delta is undefined or null');
           }
