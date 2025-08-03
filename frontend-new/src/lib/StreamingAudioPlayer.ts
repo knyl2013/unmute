@@ -10,10 +10,7 @@ export class StreamingAudioPlayer {
   private isInitialized = false;
 
   // IMPORTANT: You must know the MIME type of the audio stream.
-  // The Base64 starting with "T2dnUwA" is a dead giveaway for an Ogg container,
-  // likely with the Opus codec. If you get errors, you may need to confirm
-  // this with your service provider.
-  private static readonly MIME_TYPE = 'audio/ogg; codecs=opus';
+  private static readonly MIME_TYPE = 'audio/webm; codecs=opus';
 
   constructor() {
     this.audioContext = new AudioContext();
