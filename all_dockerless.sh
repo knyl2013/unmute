@@ -55,7 +55,7 @@ echo ""
 # ./dockerless/start_frontend.sh &
 # wait_for_port 3000 "Frontend"
 
-2. Start Backend
+# 2. Start Backend
 echo "Starting Backend..."
 ./dockerless/start_backend.sh &
 wait_for_port 8000 "Backend"
