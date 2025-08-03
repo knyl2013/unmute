@@ -50,7 +50,7 @@ export type VoiceSample = {
 
 // --- CONSTANTS ---
 export const DEFAULT_UNMUTE_CONFIG: UnmuteConfig = {
-  instructions: { type: "smalltalk", language: "en/fr" },
+  instructions: { type: "smalltalk", language: "en" },
   voice: "barack_demo.wav",
   voiceName: "Missing voice",
   isCustomInstructions: false,
