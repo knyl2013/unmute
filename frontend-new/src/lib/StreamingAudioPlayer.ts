@@ -24,6 +24,16 @@ export class StreamingAudioPlayer {
     this.mediaSource.addEventListener('sourceopen', this.onSourceOpen);
   }
 
+  public async unlockAudio() {
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+      console.log('AudioContext resumed successfully!');
+    }
+    // Now that we have user interaction, we can safely play
+    this.audioElement.play().catch(e => console.error("Error playing audio:", e));
+    this.isPlaying = true;
+  }
+
   private onSourceOpen = () => {
     if (!MediaSource.isTypeSupported(StreamingAudioPlayer.MIME_TYPE)) {
       console.error(`MIME type ${StreamingAudioPlayer.MIME_TYPE} is not supported.`);
