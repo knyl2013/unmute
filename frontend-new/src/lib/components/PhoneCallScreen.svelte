@@ -15,7 +15,6 @@
   import type { ChatMessage } from '$lib/chatHistory';
 
   import { now } from '$lib/stores';
-	import { StreamingAudioPlayer } from '$lib/StreamingAudioPlayer';
 
   export let name: string = 'Anka';
   export let imageUrl: string = '/anka-profile.png';
@@ -33,7 +32,6 @@
   let setupAudio: (mediaStream: MediaStream) => Promise<AudioProcessor | undefined>;
   let shutdownAudio: () => void;
   let processorStore: Writable<AudioProcessor | null>;
-  let player: StreamingAudioPlayer;
   let audioProcessorMain: AudioProcessor | undefined;
 
   onMount(() => {
@@ -44,8 +42,6 @@
     processorStore = audioProcessor.processorStore;
 
     isReady = true;
-
-    player = new StreamingAudioPlayer();
 
     return () => {
       if (shutdownAudio) shutdownAudio();
@@ -89,7 +85,6 @@
       // 3. Set our trigger to true. The reactive block below will handle the connection.
       shouldConnect = true; 
       callStartTime = new Date();
-      player.unlockAudio();
     } else {
       // Handle the case where the user denies permission
       console.error("Microphone access was denied.");
