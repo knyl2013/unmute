@@ -88,7 +88,8 @@
       // 3. Set our trigger to true. The reactive block below will handle the connection.
       shouldConnect = true; 
       callStartTime = new Date();
-      player.unlockAudio();
+      // player.unlockAudio();
+      player.playWhiteNoise();
     } else {
       // Handle the case where the user denies permission
       console.error("Microphone access was denied.");
