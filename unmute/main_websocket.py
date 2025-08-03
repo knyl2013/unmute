@@ -163,7 +163,7 @@ async def _get_health(
         )
         llm_up = tg.create_task(
             asyncio.to_thread(
-                _check_server_status, _ws_to_http(LLM_SERVER) + "/v1/models", KYUTAI_LLM_API_KEY
+                _check_server_status, _ws_to_http(LLM_SERVER) + "/models", KYUTAI_LLM_API_KEY
             )
         )
         voice_cloning_up = tg.create_task(
