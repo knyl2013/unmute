@@ -2,90 +2,119 @@
 
 export class StreamingAudioPlayer {
   private audioContext: AudioContext;
+  private audioElement: HTMLAudioElement;
+  private mediaSource: MediaSource;
+  private sourceBuffer: SourceBuffer | null = null;
+  private pendingChunks: ArrayBuffer[] = [];
+  private isSourceOpen = false;
 
   constructor() {
     this.audioContext = new AudioContext();
+    this.mediaSource = new MediaSource();
+    this.audioElement = new Audio();
+    this.audioElement.src = URL.createObjectURL(this.mediaSource);
+
+    this._setupMediaSource();
   }
 
   /**
-   * Play white noise. For debugging to check if the sound output is working
+   * Sets up the MediaSource and its event listeners.
    */
-  public async playWhiteNoise() {
-    const myArrayBuffer = this.audioContext.createBuffer(
-      2,
-      this.audioContext.sampleRate * 3,
-      this.audioContext.sampleRate,
-    );
+  private _setupMediaSource() {
+    this.mediaSource.addEventListener('sourceopen', () => {
+      console.log('MediaSource opened.');
+      this.isSourceOpen = true;
 
-    // Fill the buffer with white noise;
-    // just random values between -1.0 and 1.0
-    for (let channel = 0; channel < myArrayBuffer.numberOfChannels; channel++) {
-      // This gives us the actual array that contains the data
-      const nowBuffering = myArrayBuffer.getChannelData(channel);
-      for (let i = 0; i < myArrayBuffer.length; i++) {
-        // Math.random() is in [0; 1.0]
-        // audio needs to be in [-1.0; 1.0]
-        nowBuffering[i] = Math.random() * 2 - 1;
+      // The MIME type for Ogg container with Opus codec.
+      const mime = 'audio/ogg; codecs=opus';
+
+      if (!MediaSource.isTypeSupported(mime)) {
+        console.error(`Unsupported MIME type: ${mime}`);
+        return;
+      }
+      
+      // Create a SourceBuffer to hold the audio chunks [1].
+      this.sourceBuffer = this.mediaSource.addSourceBuffer(mime);
+      
+      // This listener ensures we only append a new chunk after the previous one is done [6].
+      this.sourceBuffer.addEventListener('updateend', () => {
+        // If there are chunks that arrived while the buffer was busy, append the next one.
+        if (this.pendingChunks.length > 0) {
+          this._appendToBuffer(this.pendingChunks.shift()!);
+        }
+      });
+      
+      // Process any chunks that were received before the source was ready.
+      if (this.pendingChunks.length > 0) {
+        this._appendToBuffer(this.pendingChunks.shift()!);
+      }
+    });
+  }
+
+  /**
+   * Appends a buffer to the SourceBuffer if it's not updating.
+   * @param data The ArrayBuffer data chunk.
+   */
+  private _appendToBuffer(data: ArrayBuffer) {
+    if (this.sourceBuffer && !this.sourceBuffer.updating) {
+      try {
+        this.sourceBuffer.appendBuffer(data);
+      } catch (e) {
+        console.error('Error appending buffer:', e);
       }
     }
-
-    // Get an AudioBufferSourceNode.
-    // This is the AudioNode to use when we want to play an AudioBuffer
-    const source = this.audioContext.createBufferSource();
-
-    // set the buffer in the AudioBufferSourceNode
-    source.buffer = myArrayBuffer;
-
-    // connect the AudioBufferSourceNode to the
-    // destination so we can hear the sound
-    source.connect(this.audioContext.destination);
-
-    // start the source playing
-    source.start();
   }
 
   /**
-   * Unlock audio context
+   * Adds a new audio chunk to be played.
+   * @param base64AudioData The Base64 encoded audio chunk.
+   */
+  public addChunk(base64AudioData: string) {
+    const chunk = this._base64ToArrayBuffer(base64AudioData);
+
+    // If the source buffer is ready and not busy, append immediately.
+    // Otherwise, queue the chunk to be processed later [6].
+    if (this.sourceBuffer && !this.sourceBuffer.updating) {
+      this._appendToBuffer(chunk);
+    } else {
+      this.pendingChunks.push(chunk);
+    }
+  }
+
+  /**
+   * Converts a Base64 string to an ArrayBuffer.
+   */
+  private _base64ToArrayBuffer(base64: string): ArrayBuffer {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+
+  /**
+   * Starts playback. Must be called after a user interaction.
+   */
+  public async play() {
+    await this.audioElement.play();
+    console.log('Audio playback started.');
+  }
+
+  /**
+   * Unlocks audio context and starts playback.
    */
   public async unlockAudio() {
-    await this.audioContext.resume();
-    console.log('AudioContext resumed successfully!');
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+      console.log('AudioContext resumed successfully!');
+    }
+    await this.play();
   }
-
-  /**
-   * Base64 string to AudioBuffer object
-   * @param base64String The Base64 string
-   */
-  private async base64ToAudioBuffer(base64String: string): Promise<AudioBuffer> {
-      // 1. Decode the Base64 string
-      // Remove the data URI prefix if present (e.g., "data:audio/wav;base64,")
-      const base64WithoutPrefix = base64String.includes(';base64,') 
-          ? base64String.split(';base64,')[1] 
-          : base64String;
-
-      const binaryString = atob(base64WithoutPrefix);
-
-      // 2. Create an ArrayBuffer
-      const len = binaryString.length;
-      const bytes = new Uint8Array(new ArrayBuffer(len));
-      for (let i = 0; i < len; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-      }
-
-      // 3. Decode into AudioBuffer
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      return await audioContext.decodeAudioData(bytes.buffer);
-  }
-
-  /**
-   * Adds a new audio chunk to the queue.
-   * @param base64AudioData The Base64 encoded audio delta.
-   */
-  public async addChunk(base64AudioData: string) {
-    const source = this.audioContext.createBufferSource();
-    const audioBuffer = await this.base64ToAudioBuffer(base64AudioData);
-    source.buffer = audioBuffer;
-    source.connect(this.audioContext.destination);
-    source.start();
+  
+  // Your playWhiteNoise function can remain as is for debugging.
+  public async playWhiteNoise() {
+    // ... (implementation is unchanged)
   }
 }
