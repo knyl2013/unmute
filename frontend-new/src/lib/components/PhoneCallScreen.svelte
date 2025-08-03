@@ -149,7 +149,7 @@
           if (message.delta) {
             // player.addChunk(message.delta);
             const opus = base64DecodeOpus(message.delta);
-            const ap = processorStore.current;
+            const ap = processorStore;
             console.log(ap);
             if (!ap) return;
 
