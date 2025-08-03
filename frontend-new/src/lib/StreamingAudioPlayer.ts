@@ -2,25 +2,14 @@
 
 export class StreamingAudioPlayer {
   private audioContext: AudioContext;
-  private audioQueue: Uint8Array[] = [];
-  private mediaSource: MediaSource;
-  private sourceBuffer: SourceBuffer | null = null;
-  private audioElement: HTMLAudioElement;
-  private isPlaying = false;
-  private isInitialized = false;
-
-  // IMPORTANT: You must know the MIME type of the audio stream.
-  private static readonly MIME_TYPE = 'audio/webm; codecs=opus';
 
   constructor() {
     this.audioContext = new AudioContext();
-    this.mediaSource = new MediaSource();
-    this.audioElement = new Audio();
-    this.audioElement.src = URL.createObjectURL(this.mediaSource);
-
-    this.mediaSource.addEventListener('sourceopen', this.onSourceOpen);
   }
 
+  /**
+   * Play white noise. For debugging to check if the sound output is working
+   */
   public async playWhiteNoise() {
     const myArrayBuffer = this.audioContext.createBuffer(
       2,
@@ -55,91 +44,48 @@ export class StreamingAudioPlayer {
     source.start();
   }
 
+  /**
+   * Unlock audio context
+   */
   public async unlockAudio() {
-    if (this.audioContext.state === 'suspended') {
-      await this.audioContext.resume();
-      console.log('AudioContext resumed successfully!');
-    }
-    // Now that we have user interaction, we can safely play
-    this.audioElement.play().catch(e => console.error("Error playing audio:", e));
-    this.isPlaying = true;
+    await this.audioContext.resume();
+    console.log('AudioContext resumed successfully!');
   }
 
-  private onSourceOpen = () => {
-    if (!MediaSource.isTypeSupported(StreamingAudioPlayer.MIME_TYPE)) {
-      console.error(`MIME type ${StreamingAudioPlayer.MIME_TYPE} is not supported.`);
-      return;
-    }
-
-    this.sourceBuffer = this.mediaSource.addSourceBuffer(StreamingAudioPlayer.MIME_TYPE);
-    this.sourceBuffer.addEventListener('updateend', this.processQueue);
-    this.isInitialized = true;
-    this.processQueue(); // Process any chunks that arrived before initialization
-  };
-
   /**
-   * Decodes a Base64 string to a Uint8Array.
+   * Base64 string to AudioBuffer object
+   * @param base64String The Base64 string
    */
-  private base64ToUint8Array(base64: string): Uint8Array {
-    const binaryString = window.atob(base64);
-    const len = binaryString.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
+  private async base64ToAudioBuffer(base64String: string): Promise<AudioBuffer> {
+      // 1. Decode the Base64 string
+      // Remove the data URI prefix if present (e.g., "data:audio/wav;base64,")
+      const base64WithoutPrefix = base64String.includes(';base64,') 
+          ? base64String.split(';base64,')[1] 
+          : base64String;
+
+      const binaryString = atob(base64WithoutPrefix);
+
+      // 2. Create an ArrayBuffer
+      const len = binaryString.length;
+      const bytes = new Uint8Array(new ArrayBuffer(len));
+      for (let i = 0; i < len; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      // 3. Decode into AudioBuffer
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      return await audioContext.decodeAudioData(bytes.buffer);
   }
 
   /**
    * Adds a new audio chunk to the queue.
    * @param base64AudioData The Base64 encoded audio delta.
    */
-  public addChunk(base64AudioData: string) {
-    const chunk = this.base64ToUint8Array(base64AudioData);
-    this.audioQueue.push(chunk);
-
-    // Start playback if this is the first chunk and context is ready
-    console.log(this.audioContext.state, this.isPlaying);
-    if (this.audioContext.state === 'suspended') {
-      this.audioContext.resume().then(() => {
-        this.audioElement.play();
-        this.isPlaying = true;
-      });
-    } else if (this.audioContext.state === 'running') {
-      this.audioElement.play();
-      this.isPlaying = true;
-    }
-    
-    this.processQueue();
-  }
-
-  /**
-   * Processes the next chunk in the queue if the SourceBuffer is ready.
-   */
-  private processQueue = () => {
-    if (this.isInitialized && this.sourceBuffer && !this.sourceBuffer.updating && this.audioQueue.length > 0) {
-      const chunk = this.audioQueue.shift();
-      if (chunk) {
-        try {
-          this.sourceBuffer.appendBuffer(chunk);
-        } catch (error) {
-          console.error('Error appending buffer:', error);
-        }
-      }
-    }
-  };
-
-  /**
-   * Stops playback and cleans up resources.
-   * Should be called when the conversation turn is over.
-   */
-  public stop() {
-    this.isPlaying = false;
-    // Signal the end of the stream only if the source is open
-    if (this.mediaSource.readyState === 'open' && this.sourceBuffer && !this.sourceBuffer.updating) {
-      this.mediaSource.endOfStream();
-    }
-    this.audioElement.pause();
-    this.audioQueue = []; // Clear any remaining chunks
+  public async addChunk(base64AudioData: string) {
+    const source = this.audioContext.createBufferSource();
+    const audioBuffer = await this.base64ToAudioBuffer(base64AudioData);
+    source.buffer = audioBuffer;
+    source.connect(this.audioContext.destination);
+    source.start();
   }
 }
