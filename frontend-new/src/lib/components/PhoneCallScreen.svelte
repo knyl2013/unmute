@@ -15,6 +15,7 @@
   import type { ChatMessage } from '$lib/chatHistory';
 
   import { now } from '$lib/stores';
+	import { StreamingAudioPlayer } from '$lib/StreamingAudioPlayer';
 
   export let name: string = 'Anka';
   export let imageUrl: string = '/anka-profile.png';
@@ -32,6 +33,7 @@
   let setupAudio: (mediaStream: MediaStream) => Promise<any>;
   let shutdownAudio: () => void;
   let processorStore: Writable<AudioProcessor | null>;
+  let player: StreamingAudioPlayer;
 
   onMount(() => {
     const audioProcessor = useAudioProcessor(onOpusRecorded);
@@ -41,6 +43,8 @@
     processorStore = audioProcessor.processorStore;
     
     isReady = true;
+
+    player = new StreamingAudioPlayer();
 
     return () => {
       if (shutdownAudio) shutdownAudio();
@@ -138,10 +142,17 @@
       };
 
       newWs.onmessage = (event) => {
-        // Here's where you handle messages from the server
-        const data = JSON.parse(event.data);
-        console.log("Received message:", data);
-        // Add your message handling logic here, e.g., playing audio
+        const message = JSON.parse(event.data);
+        // console.log("Received message:", message);
+        if (message.type === 'response.audio.delta') {
+          if (message.delta) {
+            player.addChunk(message.delta);
+          } else {
+            console.log('Received response.audio.delta but message.delta is undefined or null');
+          }
+        } else if (message.type === 'unmute.additional_outputs') {
+          console.log('Received metadata message:', message);
+        }
       };
 
       newWs.onclose = () => {
