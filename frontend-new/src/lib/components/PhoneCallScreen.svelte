@@ -270,6 +270,7 @@
     display: flex;
     flex-direction: column;
     color: white;
+    overflow: hidden; /* Ensure no scrollbars appear */
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     background: radial-gradient(circle at 50% 50%, #5a4743, #3a2723);
   }
