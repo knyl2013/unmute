@@ -3,7 +3,7 @@ name: Build and Push Docker Image
 # This workflow runs automatically whenever you push code to the 'main' branch.
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "frontend-new-exp" ]
 
 jobs:
   build-and-push:
