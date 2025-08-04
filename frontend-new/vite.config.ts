@@ -7,6 +7,9 @@ export default defineConfig({
         noExternal: ['svelte-icons']
     },
     server: {
-        port: 3000
+        port: 3000,
+        allowedHosts: [
+            'chat.waiyip.life',
+        ]
     }
 });
