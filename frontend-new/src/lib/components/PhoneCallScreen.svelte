@@ -122,7 +122,7 @@
   }
 
   $: {
-    const webSocketUrl = "ws://213.173.108.103:8000/v1/realtime";
+    const webSocketUrl = "wss://213.173.108.103:8000/v1/realtime";
 
     if (shouldConnect && !ws) {
       console.log("Connecting to WebSocket...");
