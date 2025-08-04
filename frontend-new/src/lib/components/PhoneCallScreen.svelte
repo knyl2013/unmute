@@ -213,11 +213,11 @@
   <header class="header">
     <div class="callerInfo">
       <h1>{name}</h1>
-      <p style:visibility={readyState === 'CONNECTING' || readyState === 'OPEN' || readyState === 'FAILED' ? 'visible' : 'hidden'}>
+      <p style:opacity={readyState === 'CONNECTING' || readyState === 'OPEN' || readyState === 'FAILED' ? '1' : '0'}>
         { 
           readyState === 'CONNECTING' ? 'Connecting...' :  
           readyState === 'OPEN' ? `${formatTime(callDuration)}` :
-          readyState === 'FAILED' ? 'Connection failed. Please try again.' : ""
+          readyState === 'FAILED' ? 'Connection failed. Please try again.' : "PLACEHOLDER"
         }
       </p>
     </div>
@@ -230,7 +230,7 @@
   </main>
 
   <footer class="footerControls">
-    {#if !isOngoing}
+    {#if !isOngoing && readyState !== "CONNECTING"}
       <button class="controlButton startCallButton" on:click={handleStartCall}>
         <FaPhone />
       </button>
@@ -311,8 +311,8 @@
   }
 
   .profileImageContainer {
-    width: 220px;
-    height: 220px;
+    width: 150px;
+    height: 150px;
     border-radius: 50%;
     overflow: hidden;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
@@ -332,8 +332,8 @@
   }
 
   .controlButton {
-    width: 60px;
-    height: 60px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background-color: rgba(255, 255, 255, 0.2);
     border: none;
