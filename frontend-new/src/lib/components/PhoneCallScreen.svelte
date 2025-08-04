@@ -33,6 +33,7 @@
   let shutdownAudio: () => void;
   let processorStore: Writable<AudioProcessor | null>;
   let audioProcessorMain: AudioProcessor | undefined;
+  let connectingAudio: HTMLAudioElement;
 
   onMount(() => {
     const audioProcessor = useAudioProcessor(onOpusRecorded);
@@ -106,6 +107,19 @@
   $: callDuration = callStartTime 
     ? Math.round((($now.getTime() - callStartTime.getTime()) / 1000)) 
     : 0;
+  
+  $: {
+    if (connectingAudio) { // Wait for the audio element to be bound
+        if (readyState === 'CONNECTING') {
+            // Play the sound. The .catch is good practice for browser audio policies.
+            connectingAudio.play().catch(e => console.error("Audio play failed", e));
+        } else {
+            // If the state is anything else, stop the sound and reset it.
+            connectingAudio.pause();
+            connectingAudio.currentTime = 0;
+        }
+      }
+  }
 
   $: {
     const webSocketUrl = "ws://localhost:8000/v1/realtime";
@@ -233,6 +247,7 @@
       <p class="error-text">Microphone access denied. Please enable it in your browser settings.</p>
     {/if}
   </footer>
+  <audio src="/connecting.wav" bind:this={connectingAudio} loop></audio>
 </div>
 
 <!-- The styles are scoped to this component by default. No special setup needed. -->
