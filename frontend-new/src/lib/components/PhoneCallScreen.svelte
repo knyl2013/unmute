@@ -246,7 +246,7 @@
   }
 
   .callContainer {
-    width: 375px;
+    width: 100vw;
     height: 100vh;
     border-radius: 40px;
     overflow: hidden;
