@@ -1,6 +1,7 @@
 #!/bin/bash
 set -ex
 cd "$(dirname "$0")/"
+export CUDA_COMPUTE_CAP=8.6
 
 # This is part of a hack to get dependencies needed for the TTS Rust server, because it integrates a Python component
 [ -f pyproject.toml ] || wget https://raw.githubusercontent.com/kyutai-labs/moshi/9837ca328d58deef5d7a4fe95a0fb49c902ec0ae/rust/moshi-server/pyproject.toml
@@ -19,8 +20,6 @@ export LD_LIBRARY_PATH=$(python -c 'import sysconfig; print(sysconfig.get_config
 
 # A fix for building Sentencepiece on GCC 15, see: https://github.com/google/sentencepiece/issues/1108
 export CXXFLAGS="-include cstdint"
-
-export CUDA_COMPUTE_CAP=8.6
 
 # If you already have moshi-server installed and things are not working because of the LD_LIBRARY_PATH issue,
 # you might have to force a rebuild with --force.
