@@ -20,6 +20,8 @@ export LD_LIBRARY_PATH=$(python -c 'import sysconfig; print(sysconfig.get_config
 # A fix for building Sentencepiece on GCC 15, see: https://github.com/google/sentencepiece/issues/1108
 export CXXFLAGS="-include cstdint"
 
+export CUDA_COMPUTE_CAP=8.6
+
 # If you already have moshi-server installed and things are not working because of the LD_LIBRARY_PATH issue,
 # you might have to force a rebuild with --force.
 cargo install --features cuda moshi-server@0.6.3 --force
