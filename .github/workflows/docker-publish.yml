@@ -11,14 +11,6 @@ jobs:
     runs-on: self-hosted
 
     steps:
-      - name: Free up disk space
-        run: |
-          echo "Initial disk space:"
-          df -h
-          echo "Pruning Docker system..."
-          docker system prune -af --volumes
-          echo "Disk space after prune:"
-          df -h
       # 1. Checks out your repository code so the workflow can access it
       - name: Check out the repo
         uses: actions/checkout@v4
