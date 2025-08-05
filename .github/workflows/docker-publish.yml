@@ -52,3 +52,4 @@ jobs:
           # Enables build caching to speed up future runs
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          tmpfs: /tmp
