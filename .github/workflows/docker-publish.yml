@@ -2,8 +2,12 @@ name: Build and Push Docker Image
 
 # This workflow runs automatically whenever you push code to the 'main' branch.
 on:
-  push:
-    branches: [ "frontend-new-exp" ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'A custom version tag (e.g., v1.0.1) for the Docker image. If left blank, only "latest" and the commit hash tags will be pushed.'
+        required: false
+        default: ''
 
 jobs:
   build-and-push:
