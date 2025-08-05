@@ -6,7 +6,7 @@ RUN curl -fsSL https://get.pnpm.io/install.sh | sh -
 RUN apt-get update
 RUN apt-get install -y vim libssl-dev pkg-config cmake net-tools
 COPY . .
-RUN bash ./dockerless/install_stt.sh
 RUN bash ./dockerless/install_tts.sh
+RUN bash ./dockerless/install_stt.sh
 EXPOSE 8000
 CMD ["bash", "all_dockerless_noinstall.sh"]
