@@ -33,6 +33,7 @@
   let shutdownAudio: () => void;
   let processorStore: Writable<AudioProcessor | null>;
   let audioProcessorMain: AudioProcessor | undefined;
+  let webSocketUrl: string | null = null;
   let connectingAudio: HTMLAudioElement;
 
   onMount(() => {
@@ -41,6 +42,15 @@
     setupAudio = audioProcessor.setupAudio;
     shutdownAudio = audioProcessor.shutdownAudio;
     processorStore = audioProcessor.processorStore;
+
+    fetch('/api/websocket-url').then(async response => {
+      if (!response.ok) {
+        throw new Error(`Failed to fetch WebSocket URL: ${response.statusText}`);
+      }
+      const data = await response.json();
+      webSocketUrl = data.url; // Store the URL
+    });
+    
 
     isReady = true;
 
@@ -122,9 +132,7 @@
   }
 
   $: {
-    const webSocketUrl = "wss://3vzar43t5x8c9b-8000.proxy.runpod.net/v1/realtime";
-
-    if (shouldConnect && !ws) {
+    if (shouldConnect && !ws && webSocketUrl != null) {
       console.log("Connecting to WebSocket...");
       readyState = 'CONNECTING';
       const newWs = new WebSocket(webSocketUrl, ["realtime"]);
