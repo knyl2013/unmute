@@ -122,7 +122,7 @@
   }
 
   $: {
-    const webSocketUrl = "wss://5m50g27d77d4rk-8000.proxy.runpod.net/v1/realtime";
+    const webSocketUrl = "wss://3vzar43t5x8c9b-8000.proxy.runpod.net/v1/realtime";
 
     if (shouldConnect && !ws) {
       console.log("Connecting to WebSocket...");
