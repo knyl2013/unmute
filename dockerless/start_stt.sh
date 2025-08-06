@@ -6,4 +6,4 @@ cd "$(dirname "$0")/.."
 export CXXFLAGS="-include cstdint"
 
 cargo install --features cuda moshi-server@0.6.3
-moshi-server worker --config services/moshi-server/configs/stt.toml --port 8090
+moshi-server worker --config services/moshi-server/configs/stt-prod.toml --port 8090
