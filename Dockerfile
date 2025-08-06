@@ -11,31 +11,36 @@ RUN apt-get update && apt-get install -y \
     rm -rf /var/lib/apt/lists/*
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH="/root/.cargo/bin:$PATH"
-COPY --from=ghcr.io/astral-sh/uv:0.7.2 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.7.2 /uv /bin/
 
 WORKDIR /app
 ENV RUST_BACKTRACE=1
 
-# --- IMPORTANT ---
-# Adjust this path if your moshi-server code is not in 'services/moshi-server'
-COPY services/moshi-server/ ./
+# Replicate the original behavior: download the dependency manifest and lockfile from GitHub.
+RUN wget https://raw.githubusercontent.com/kyutai-labs/moshi/a40c5612ade3496f4e4aa47273964404ba287168/rust/moshi-server/pyproject.toml
+RUN wget https://raw.githubusercontent.com/kyutai-labs/moshi/a40c5612ade3496f4e4aa47273964404ba287168/rust/moshi-server/uv.lock
 
-# Install moshi-server dependencies using the lockfile
-RUN --mount=type=bind,source=uv.lock,target=uv.lock,from=services/moshi-server \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml,from=services/moshi-server \
-    uv run --locked --project . echo "Moshi dependencies installed."
+# Now, install dependencies using the downloaded files. 'uv' will find them in the current directory.
+RUN uv run --locked --project . echo "Moshi dependencies installed."
+
+# Finally, copy the local moshi-server files (like configs, scripts) into the build stage.
+# This assumes your local configs are in 'services/moshi-server/'.
+COPY services/moshi-server/ ./
 
 
 # Stage 2: Build the backend service
+# This stage should be correct as the backend's pyproject.toml and uv.lock are likely in the project root.
 FROM ghcr.io/astral-sh/uv:0.6.17-debian AS backend-builder
 WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 UV_LOCKED=1
 
-# Install backend python dependencies using its lockfile
-RUN --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv run --no-dev echo "Backend dependencies installed."
-# Copy backend source code
+# Copy dependency files from the project root first.
+COPY pyproject.toml uv.lock ./
+
+# Now, install backend python dependencies.
+RUN uv run --no-dev echo "Backend dependencies installed."
+
+# Finally, copy the rest of the backend source code.
 COPY . .
 
 
@@ -53,7 +58,7 @@ RUN apt-get update && apt-get install -y \
 # Copy uv, cargo, and rust from the moshi-builder stage for the runtime environment
 ENV PATH="/root/.cargo/bin:$PATH"
 COPY --from=moshi-builder /root/.cargo /root/.cargo
-COPY --from=moshi-builder /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.7.2 /uv /bin/
 
 # Copy the built moshi-server app into its own directory
 WORKDIR /app/moshi-server
