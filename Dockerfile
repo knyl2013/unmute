@@ -57,5 +57,7 @@ EXPOSE 8000
 HEALTHCHECK --start-period=60s --interval=15s --timeout=5s \
   CMD curl -f http://localhost:8000/metrics || exit 1
 
+RUN pip install moshi --upgrade
+
 # Set the entrypoint to our custom script.
 ENTRYPOINT ["start-services.sh"]
