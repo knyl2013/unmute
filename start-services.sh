@@ -3,8 +3,10 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
-echo "--- Debug to list all files ---"
-ls -R /app/
+# echo "--- Debug to list all files ---"
+# ls -R /app/
+echo "--- Upgrade moshi ---"
+pip install moshi --upgrade  
 
 echo "--- Starting TTS Service ---"
 # Start the TTS worker in the background
