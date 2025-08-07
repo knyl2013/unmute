@@ -3,6 +3,9 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
+echo "--- Debug to list all files ---"
+ls -R /app/
+
 echo "--- Starting TTS Service ---"
 # Start the TTS worker in the background
 # NOTE: The internal port for TTS is 8081 (from our previous supervisord.conf)
