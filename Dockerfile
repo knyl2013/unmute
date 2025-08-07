@@ -27,6 +27,7 @@ RUN uv run --locked --project . echo "Moshi dependencies installed."
 # This assumes your local configs are in 'services/moshi-server/'.
 COPY services/moshi-server/ ./
 
+RUN cargo build --release
 
 # Stage 2: Build the backend service
 # This stage should be correct as the backend's pyproject.toml and uv.lock are likely in the project root.
