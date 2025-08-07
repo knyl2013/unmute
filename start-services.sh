@@ -4,11 +4,14 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
-MOSHI_WORKER_EXECUTABLE="/app/moshi-server/.venv/bin/moshi-server"
+echo "--- Upgrading moshi package at runtime ---"
+# Use 'uv pip install' as a replacement for 'pip install'
+uv pip install moshi --upgrade
+echo "--- Upgrade complete ---"
 
 echo "--- Starting STT Service ---"
 # Start the STT worker in the background using the explicit path
-$MOSHI_WORKER_EXECUTABLE worker --config /app/moshi-server/configs/stt.toml &
+exec uv run --locked --project /app/moshi-server moshi-server worker --config /app/moshi-server/configs/stt.toml &
 
 # Wait for STT to be healthy
 echo "Waiting for STT service to be ready on port 8082..."
@@ -21,7 +24,7 @@ echo "STT service is ready!"
 
 echo "--- Starting TTS Service ---"
 # Start the TTS worker in the background using the explicit path
-$MOSHI_WORKER_EXECUTABLE worker --config /app/moshi-server/configs/tts.toml &
+exec uv run --locked --project /app/moshi-server moshi-server worker --config /app/moshi-server/configs/tts.toml &
 
 # Wait for TTS to be healthy
 echo "Waiting for TTS service to be ready on port 8081..."
