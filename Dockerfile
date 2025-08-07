@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     rm -rf /var/lib/apt/lists/*
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH="/root/.cargo/bin:$PATH"
-COPY --from=ghcr.io/astral-sh/uv:0.7.2 /uv /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.7.2 /uv /uvx /bin/
 WORKDIR /app
 ENV RUST_BACKTRACE=1
 RUN wget https://raw.githubusercontent.com/kyutai-labs/moshi/a40c5612ade3496f4e4aa47273964404ba287168/rust/moshi-server/pyproject.toml
@@ -38,7 +38,7 @@ RUN apt-get update && apt-get install -y \
 # Copy runtime tools (Rust, uv)
 ENV PATH="/root/.cargo/bin:$PATH"
 COPY --from=moshi-builder /root/.cargo /root/.cargo
-COPY --from=ghcr.io/astral-sh/uv:0.7.2 /uv /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.7.2 /uv /uvx /bin/
 
 # Copy the built applications
 WORKDIR /app/moshi-server
