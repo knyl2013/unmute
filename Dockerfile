@@ -44,5 +44,5 @@ HEALTHCHECK --start-period=60s --interval=15s --timeout=5s \
   CMD curl -f http://localhost:8000/metrics || exit 1
 
 # Set the entrypoint to our custom script.
-ENTRYPOINT ["start-services.sh"]
-#CMD ["bash", "start-services.sh"]
+# ENTRYPOINT ["start-services.sh"]
+CMD ["bash", "start-services.sh"]
