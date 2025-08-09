@@ -28,6 +28,19 @@ while ! curl -s -f http://localhost:8089/api/build_info > /dev/null; do
 done
 echo "TTS service is ready!"
 
+# Wait for LLM to be healthy
+echo "Waiting for LLM service to be ready on port "
+uv tool run vllm serve \
+  --model=google/gemma-3n-e4b \
+  --max-model-len=8192 \
+  --dtype=bfloat16 \
+  --gpu-memory-utilization=0.3 \
+  --port=8091
+while ! cur -s -f http://localhost:8091/api/models > /dev/null; do
+    echo -n "."
+    sleep 2
+done
+echo "LLM service is ready!"
 
 echo "--- Starting Backend Service ---"
 # The backend command is fine as is, since 'uvicorn' is not a conflicting name.
