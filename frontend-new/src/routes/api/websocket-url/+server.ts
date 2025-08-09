@@ -2,17 +2,41 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { RUNPOD_API_KEY } from '$env/static/private';
 
 // This is our new serverless function (API endpoint).
 // It handles GET requests to `/api/websocket-url`.
-export const GET: RequestHandler = async () => {
-  // In the future, you could have dynamic logic here to select a server,
-  // generate a temporary token, etc.
-  const webSocketUrl = "wss://cdypi3ewb45fuj-8000.proxy.runpod.net/v1/realtime";
+export const POST: RequestHandler = async () => {
+    const podId = 'cdypi3ewb45fuj' ;
 
-  // We return the URL in a JSON object.
-  // The `json()` helper from SvelteKit sets the correct Content-Type header.
-  return json({
-    url: webSocketUrl
-  });
+    if (!RUNPOD_API_KEY) {
+        console.error("RUNPOD_API_KEY environment variables are not set.");
+        throw error(500, 'Server configuration error.');
+    }
+
+    const startUrl = `https://rest.runpod.io/v1/pods/${podId}/start`;
+
+    try {
+        const response = await fetch(startUrl, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${RUNPOD_API_KEY}` }
+        });
+
+        if (!response.ok) {
+            const errorBody = await response.json();
+            console.error(`Failed to start RunPod pod ${podId}. Status: ${response.status}`, errorBody);
+            throw error(502, 'Failed to start the backend service.');
+        }
+
+        console.log(`Successfully started or confirmed pod ${podId} is running.`);
+
+    } catch (e: any) {
+        console.error("An error occurred while trying to start the RunPod pod:", e);
+        if (e.status) throw e; 
+        throw error(500, 'An internal error occurred.');
+    }
+
+    const webSocketUrl = `wss://${podId}-8000.proxy.runpod.net/v1/realtime`;
+
+    return json({ url: webSocketUrl });
 };
