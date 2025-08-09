@@ -43,7 +43,7 @@
     shutdownAudio = audioProcessor.shutdownAudio;
     processorStore = audioProcessor.processorStore;
 
-    fetch('/api/websocket-url').then(async response => {
+    fetch('/api/websocket-url', {method: 'POST'}).then(async response => {
       if (!response.ok) {
         throw new Error(`Failed to fetch WebSocket URL: ${response.statusText}`);
       }
