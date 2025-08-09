@@ -35,6 +35,22 @@
   let audioProcessorMain: AudioProcessor | undefined;
   let webSocketUrl: string | null = null;
   let connectingAudio: HTMLAudioElement;
+  let status: 'online' | 'offline' = 'offline';
+
+  const checkHealth = async() => {
+    try {
+      const response = await fetch('/api/healthcheck');
+      if (response.ok) {
+        const data = await response.json();
+        status = data.status; 
+      } else {
+        status = 'offline';
+      }
+    } catch (error) {
+      console.error("Health check request failed:", error);
+      status = 'offline';
+    }
+  }
 
   onMount(() => {
     const audioProcessor = useAudioProcessor(onOpusRecorded);
@@ -54,8 +70,12 @@
 
     isReady = true;
 
+    checkHealth();
+    const intervalId = setInterval(checkHealth, 2000);
+
     return () => {
       if (shutdownAudio) shutdownAudio();
+      if (intervalId) clearInterval(intervalId);
     };
   });
 
@@ -220,7 +240,8 @@
 <div class="callContainer">
   <header class="header">
     <div class="callerInfo">
-      <h1>{name}</h1>
+      <h1 class="name-container"><span class={`server-indicator ${status}`}></span> {name}</h1>
+      
       <p style:opacity={readyState === 'CONNECTING' || readyState === 'OPEN' || readyState === 'FAILED' ? '1' : '0'}>
         { 
           readyState === 'CONNECTING' ? 'Connecting...' :  
@@ -385,5 +406,23 @@
 
   .startCallButton:hover {
     background-color: #45d160;
+  }
+
+  .server-indicator.online {
+    background-color: #4CAF50;
+  }
+
+  .server-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px solid white;
+    margin-top: 12px;
+    margin-right: 12px;
+  }
+
+  .name-container {
+    display: flex;
+    padding-left: calc(50% - 50px);
   }
 </style>
