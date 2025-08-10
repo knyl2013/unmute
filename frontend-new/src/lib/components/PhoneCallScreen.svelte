@@ -14,7 +14,8 @@
   import { base64DecodeOpus, base64EncodeOpus } from '$lib/audioUtil';
   import type { ChatMessage } from '$lib/chatHistory';
 
-  import { now } from '$lib/stores';
+  import { generateReport, now } from '$lib/stores';
+	import { goto } from '$app/navigation';
 
   export let name: string = 'IELTS Examiner';
   export let description: string = 'Estimate your IELTS speaking score by chatting to AI';
@@ -28,7 +29,6 @@
   let shouldConnect = false; // This is our main trigger for the connection
   let ws: WebSocket | null = null;
   let readyState: 'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED' | 'FAILED' = 'CLOSED';
-  let rawChatHistory: ChatMessage[] = []; // To store conversation text if needed
   let isReady = false;
   let setupAudio: (mediaStream: MediaStream) => Promise<AudioProcessor | undefined>;
   let shutdownAudio: () => void;
@@ -36,6 +36,14 @@
   let audioProcessorMain: AudioProcessor | undefined;
   let webSocketUrl: string | null = null;
   let connectingAudio: HTMLAudioElement;
+  // let chatHistory: ChatMessage[] = [];
+  // Dummy chat history for demonstration
+  let chatHistory: ChatMessage[] = [
+    { role: 'assistant', content: 'Hello! To start, could you tell me about your hometown?' },
+    { role: 'user', content: 'Uh, yes. My hometown is a place... is very beautiful. It has many parks and the people is friendly.' },
+    { role: 'assistant', content: 'That sounds lovely. What kind of things can a visitor do there?' },
+    { role: 'user', content: 'A visitor can go to the central park. Also, he can visiting the museum, which has many old things. I think it is a good experience for everyone.' }
+  ];
   let status: 'online' | 'offline' = 'offline';
 
   const checkHealth = async() => {
@@ -124,13 +132,15 @@
     }
   };
 
-  const handleStopCall = () => {
+  const handleStopCall = async () => {
     isOngoing = false;
     // Set the trigger to false. The reactive block will handle disconnection.
     shouldConnect = false;
     shutdownAudio();
     callStartTime = null;
     readyState = 'CLOSED';
+    goto('/report');
+    await generateReport(chatHistory);
   };
 
   $: analyserNode = $processorStore?.inputAnalyser;
@@ -194,6 +204,9 @@
           }
         } else if (message.type === 'unmute.additional_outputs') {
           console.log('Received metadata message:', message);
+          chatHistory = message.args.chat_history;
+        } else {
+          console.log('Received unknown message:', message);
         }
       };
 
