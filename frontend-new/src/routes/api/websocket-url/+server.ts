@@ -7,7 +7,7 @@ import { RUNPOD_API_KEY } from '$env/static/private';
 // This is our new serverless function (API endpoint).
 // It handles POST requests to `/api/websocket-url`.
 export const POST: RequestHandler = async () => {
-    const podId = 'bngzjty5rfp9eo' ;
+    const podId = 'afmuvqahgs8mkg' ;
 
     if (!RUNPOD_API_KEY) {
         console.error("RUNPOD_API_KEY environment variables are not set.");
