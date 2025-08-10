@@ -4,7 +4,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async () => {
-    const podId = 'bngzjty5rfp9eo' ;
+    const podId = 'qk0u2b5eqjm0mk' ;
 
     const healthcheckUrl = `https://${podId}-8000.proxy.runpod.net/metrics`;
 
