@@ -31,12 +31,12 @@ echo "TTS service is ready!"
 # Wait for LLM to be healthy
 echo "Waiting for LLM service to be ready on port "
 uv tool run vllm serve \
-  --model=google/gemma-3n-e4b \
-  --max-model-len=8192 \
+  --model=google/gemma-3n-e2b \
+  --max-model-len=1536 \
   --dtype=bfloat16 \
-  --gpu-memory-utilization=0.3 \
+  --gpu-memory-utilization=0.5 \
   --port=8091
-while ! cur -s -f http://localhost:8091/api/models > /dev/null; do
+while ! cur -s -f http://localhost:8091/api/metrics > /dev/null; do
     echo -n "."
     sleep 2
 done
