@@ -16,8 +16,9 @@
 
   import { now } from '$lib/stores';
 
-  export let name: string = 'Free IELTS Speaking Score Estimate';
-  export let imageUrl: string = '/ielts-examiner-profile.png';
+  export let name: string = 'IELTS Examiner';
+  export let description: string = 'Estimate your IELTS score by chatting';
+  export let imageUrl: string = '/ielts-examiner.png';
   
   let isOngoing: boolean = false;
   let callDuration: number = 0;
@@ -241,7 +242,7 @@
   <header class="header">
     <div class="callerInfo">
       <h1 class="name-container"><span class={`server-indicator ${status}`}></span> {name}</h1>
-      
+      <h5 class="description-container"> {description} </h5>
       <p style:opacity={readyState === 'CONNECTING' || readyState === 'OPEN' || readyState === 'FAILED' ? '1' : '0'}>
         { 
           readyState === 'CONNECTING' ? 'Connecting...' :  
@@ -423,6 +424,10 @@
 
   .name-container {
     display: flex;
-    padding-left: calc(50% - 50px);
+    padding-left: calc(50% - 145px);
+  }
+
+  .description-container {
+    font-style: italic;
   }
 </style>
