@@ -17,7 +17,7 @@
   import { now } from '$lib/stores';
 
   export let name: string = 'IELTS Examiner';
-  export let description: string = 'Estimate your IELTS score by chatting';
+  export let description: string = 'Estimate your IELTS speaking score by chatting';
   export let imageUrl: string = '/ielts-examiner.png';
   
   let isOngoing: boolean = false;
