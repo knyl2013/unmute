@@ -16,8 +16,8 @@
 
   import { now } from '$lib/stores';
 
-  export let name: string = 'Anka';
-  export let imageUrl: string = '/anka-profile.png';
+  export let name: string = 'Free IELTS Speaking Score Estimate';
+  export let imageUrl: string = '/ielts-examiner-profile.png';
   
   let isOngoing: boolean = false;
   let callDuration: number = 0;
