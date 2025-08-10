@@ -277,7 +277,6 @@
     padding: 20px;
     text-align: center;
     flex-shrink: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.2), transparent);
   }
 
   .actionButton {
