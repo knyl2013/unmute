@@ -28,19 +28,27 @@ while ! curl -s -f http://localhost:8089/api/build_info > /dev/null; do
 done
 echo "TTS service is ready!"
 
-# Wait for LLM to be healthy
-echo "Waiting for LLM service to be ready on port "
-uv tool run vllm serve \
-  --model=google/gemma-3n-e2b \
-  --max-model-len=1536 \
-  --dtype=bfloat16 \
-  --gpu-memory-utilization=0.5 \
-  --port=8091
-while ! curl -s -f http://localhost:8091/health > /dev/null; do
+if [ -z "$KYUTAI_LLM_URL" ]; then
+  echo "KYUTAI_LLM_URL is not set. Starting local LLM service..."
+  
+  # Start the local vLLM server in the background
+  uv tool run vllm serve \
+    --model=google/gemma-3n-e2b \
+    --max-model-len=1536 \
+    --dtype=bfloat16 \
+    --gpu-memory-utilization=0.5 \
+    --port=8091 &
+
+  # Wait for the local LLM to be healthy
+  echo "Waiting for local LLM service to be ready on port 8091..."
+  while ! curl -s -f http://localhost:8091/health > /dev/null; do
     echo -n "."
     sleep 2
-done
-echo "LLM service is ready!"
+  done
+  echo "Local LLM service is ready!"
+else
+  echo "Using external LLM service at $KYUTAI_LLM_URL"
+fi
 
 echo "--- Starting Backend Service ---"
 # The backend command is fine as is, since 'uvicorn' is not a conflicting name.
