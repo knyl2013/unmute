@@ -2,15 +2,14 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { RUNPOD_API_KEY } from '$env/static/private';
+import { RUNPOD_API_KEY, POD_ID } from '$env/static/private';
 
 // This is our new serverless function (API endpoint).
 // It handles POST requests to `/api/websocket-url`.
 export const POST: RequestHandler = async () => {
-    const podId = 'fo8n6w70axfau4' ;
 
-    if (!RUNPOD_API_KEY) {
-        console.error("RUNPOD_API_KEY environment variables are not set.");
+    if (!POD_ID || !RUNPOD_API_KEY) {
+        console.error("POD_ID OR RUNPOD_API_KEY environment variables are not set.");
         throw error(500, 'Server configuration error.');
     }
 
@@ -36,7 +35,7 @@ export const POST: RequestHandler = async () => {
     //     throw error(500, 'An internal error occurred.');
     // }
 
-    const webSocketUrl = `wss://${podId}-8000.proxy.runpod.net/v1/realtime`;
+    const webSocketUrl = `wss://${POD_ID}-8000.proxy.runpod.net/v1/realtime`;
 
     return json({ url: webSocketUrl });
 };
