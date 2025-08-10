@@ -36,7 +36,7 @@ uv tool run vllm serve \
   --dtype=bfloat16 \
   --gpu-memory-utilization=0.5 \
   --port=8091
-while ! cur -s -f http://localhost:8091/api/metrics > /dev/null; do
+while ! cur -s -f http://localhost:8091/health > /dev/null; do
     echo -n "."
     sleep 2
 done
