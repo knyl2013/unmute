@@ -62,6 +62,10 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
     outputWorklet.connect(audioContext.destination);
     const outputAnalyser = audioContext.createAnalyser();
     outputAnalyser.fftSize = 2048;
+
+    const gainNode = outputAnalyser.context.createGain();
+    gainNode.gain.value = 3.0; // setting it to 300%
+    gainNode.connect(outputAnalyser.context.destination);
     outputWorklet.connect(outputAnalyser);
 
     const decoder = new Worker("/decoderWorker.min.js") as Worker;
@@ -123,7 +127,7 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
     processorStore.set(audioProcessor);
 
     await audioProcessor.audioContext.resume();
-    opusRecorder.start();
+    opusRecorder.start();    
 
     return audioProcessor;
   };
