@@ -337,7 +337,6 @@
     width: 100vw;
     height: 100vh;
     height: 100dvh; /* Fix for mobile screens */
-    border-radius: 40px;
     overflow: hidden;
     position: relative;
     display: flex;
