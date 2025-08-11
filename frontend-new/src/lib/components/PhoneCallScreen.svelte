@@ -61,6 +61,21 @@
     }
   }
 
+  async function notifyBackend(action: 'register' | 'unregister') {
+    try {
+      // The 'keepalive' flag is CRITICAL for 'unregister'. It ensures the
+      // request is sent even if the page is being closed.
+      await fetch('/api/pod-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+        keepalive: action === 'unregister',
+      });
+    } catch (e) {
+      console.error(`Failed to ${action} connection:`, e);
+    }
+  }
+
   onMount(() => {
     const audioProcessor = useAudioProcessor(onOpusRecorded);
     
@@ -82,9 +97,12 @@
     checkHealth();
     const intervalId = setInterval(checkHealth, 2000);
 
+    notifyBackend('register');
+
     return () => {
       if (shutdownAudio) shutdownAudio();
       if (intervalId) clearInterval(intervalId);
+      notifyBackend('unregister');
     };
   });
 
@@ -109,6 +127,11 @@
   }
 
   const handleStartCall = async () => {
+    if (status !== 'online') {
+        alert("We are still bringing up the server. This could take 3-4 minutes. Thank you for your patience");
+        console.warn("Server is not ready yet.");
+        return;
+    }
     if (!isReady || !setupAudio) {
         console.warn("Audio processor is not ready yet.");
         return; 
@@ -274,13 +297,20 @@
 
   <footer class="footerControls">
     {#if !isOngoing && readyState !== "CONNECTING"}
-      <button class="controlButton startCallButton" on:click={handleStartCall}>
-        <FaPhone />
+      <button 
+        class={`controlButton startCallButton ${status}`}
+        on:click={handleStartCall}
+      >
+        {#if status === 'online'}
+          <FaPhone />
+        {:else}
+          <div class="spinner"></div>
+        {/if}
       </button>
+      {#if status !== 'online'}
+        <h5>We are still bringing up the server. This could take 3-4 minutes. Thank you for your patience.</h5>
+      {/if}
     {:else}
-      <button class="controlButton">
-        <FaMicrophoneSlash />
-      </button>
       <button class="controlButton endCallButton" on:click={handleStopCall}>
         <FaPhoneSlash />
       </button>
@@ -374,6 +404,7 @@
     justify-content: space-around;
     align-items: center;
     padding: 0 20px 50px 20px;
+    flex-direction: column;
   }
 
   .controlButton {
@@ -414,6 +445,10 @@
     background-color: #34c759;
   }
 
+  .startCallButton.offline {
+    background-color: #5a4743;
+  }
+
   .startCallButton:active {
     background-color: #28a745;
   }
@@ -442,5 +477,26 @@
 
   .description-container {
     font-style: italic;
+  }
+
+  .spinner {
+    width: 24px;  /* Make it slightly smaller than the button */
+    height: 24px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff; /* This creates the "pac-man" effect */
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  .break {
+    flex-basis: 100%;
+    width: 0;
+  }
+  
+  /* The keyframes for the spinning animation */
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 </style>

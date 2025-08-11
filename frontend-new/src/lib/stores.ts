@@ -51,8 +51,8 @@ export const generateReport = async (chatHistory: ChatMessage[]) => {
   try {
     // 2. Filter for user messages only, as that's what we want to evaluate
     const userMessages = chatHistory.filter(msg => msg.role === 'user');
-    if (userMessages.length === 0) {
-      throw new Error("No user messages found to generate a report.");
+    if (userMessages.length < 10) {
+      throw new Error("Not enough user data to generate a report. Please try again and chat at least for a minute");
     }
     
     // 3. Call our internal SvelteKit API endpoint
