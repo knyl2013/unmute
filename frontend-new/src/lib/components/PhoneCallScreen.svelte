@@ -1,6 +1,7 @@
 <!-- src/lib/components/PhoneCallScreen.svelte -->
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { ScreenWakeLock } from "svelte-screen-wake-lock";
   import FaMicrophoneSlash from 'svelte-icons/fa/FaMicrophoneSlash.svelte'
   import FaPhoneSlash from 'svelte-icons/fa/FaPhoneSlash.svelte'
   import FaPhone from 'svelte-icons/fa/FaPhone.svelte'
@@ -309,6 +310,8 @@
       </button>
       {#if status !== 'online'}
         <h5>We are still bringing up the server. This could take 3-4 minutes. Thank you for your patience.</h5>
+      {:else}
+        <ScreenWakeLock />  
       {/if}
     {:else}
       <button class="controlButton endCallButton" on:click={handleStopCall}>
