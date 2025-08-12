@@ -56,8 +56,9 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ podId: podId })
       });
+      const json = await response.json();
       if (response.ok) {
-        status = 'online';
+        status = json.status;
       } else {
         status = 'offline';
       }
