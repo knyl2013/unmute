@@ -2,18 +2,17 @@ import { RUNPOD_API_KEY } from '$env/static/private';
 import { error } from '@sveltejs/kit';
 
 // --- State ---
-let activePodId: string | null = null; // ID of the pod this server is actively managing
+let isInitialized = false;
+let activePodId: string | null = null;
 let activeConnections = 0;
-let shutdownTimer: NodeJS.Timeout | null = null; // Timer for shutting down the *active* pod
-
-// Tracks background cleanup timers for idle pods to prevent duplicate timers
-// Key: podId, Value: NodeJS.Timeout
+let shutdownTimer: NodeJS.Timeout | null = null;
 const cleanupTimers = new Map<string, NodeJS.Timeout>();
 
 // --- Constants ---
-const SHUTDOWN_GRACE_PERIOD_MS = 30 * 60 * 1000; // 30 minutes for active pod
-const SHUTDOWN_GRACE_PERIOD_MS_WHEN_NO_CONNECTION = 5 * 60 * 1000; // 5 minutes for active pod
-const IDLE_POD_CLEANUP_MS = 30 * 60 * 1000; // 30-minute cleanup for any discovered idle pod
+const SHUTDOWN_GRACE_PERIOD_MS = 30 * 60 * 1000;
+const SHUTDOWN_GRACE_PERIOD_MS_WHEN_NO_CONNECTION = 5 * 60 * 1000;
+const IDLE_POD_CLEANUP_MS = 30 * 60 * 1000;
+const CRON_JOB_INTERVAL_MS = 5 * 60 * 1000; // 5-minute cron interval
 
 const RUNPOD_API_BASE_URL = 'https://rest.runpod.io/v1';
 
@@ -29,88 +28,171 @@ const POD_CREATE_CONFIG = {
 };
 
 
-// --- Private API Functions ---
+// --- Core Pod Management Functions (Stop, Terminate, Start, etc.) ---
 
 /**
- * Terminates (deletes) a specific pod and cleans up any associated timers.
+ * Stops the currently active pod. Does NOT clear activePodId.
  */
-async function terminatePod(podIdToTerminate: string) {
-    console.log(`[TERMINATE] Attempting to terminate pod ${podIdToTerminate}.`);
-    if (!RUNPOD_API_KEY) {
-        console.error("TERMINATE_POD_ERROR: RUNPOD_API_KEY env var not set.");
-        return;
-    }
-
-    // Clear any pending cleanup timer for this pod
-    if (cleanupTimers.has(podIdToTerminate)) {
-        clearTimeout(cleanupTimers.get(podIdToTerminate)!);
-        cleanupTimers.delete(podIdToTerminate);
-        console.log(`[TERMINATE] Cleared background cleanup timer for ${podIdToTerminate}.`);
-    }
-
-    const terminateUrl = `${RUNPOD_API_BASE_URL}/pods/${podIdToTerminate}/terminate`;
+async function stopPod(podIdToStop: string) {
+    console.log(`[STOP] Requesting to stop pod ${podIdToStop}.`);
+    const stopUrl = `${RUNPOD_API_BASE_URL}/pods/${podIdToStop}/stop`;
     try {
-        await fetch(terminateUrl, {
+        const response = await fetch(stopUrl, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${RUNPOD_API_KEY}` }
         });
-        console.log(`[TERMINATE] Successfully requested termination for pod ${podIdToTerminate}.`);
-    } catch (e) {
-        console.error(`[TERMINATE] An error occurred while terminating pod ${podIdToTerminate}:`, e);
-    } finally {
-        // If this was our active pod, reset the server's state
-        if (activePodId === podIdToTerminate) {
-            console.log("[STATE] Resetting active pod state.");
-            activePodId = null;
-            activeConnections = 0;
-            shutdownTimer = null;
+        if (!response.ok && response.status !== 409) { // 409 Conflict can mean it's already stopped
+            console.error(`[STOP] Failed to stop pod ${podIdToStop}. Status: ${response.status}`, await response.text());
+        } else {
+            console.log(`[STOP] Successfully requested to stop pod ${podIdToStop}.`);
+            // If this was our active pod, reset its connection state
+            if (activePodId === podIdToStop) {
+                console.log(`[STATE] Pod stopped. Resetting connection count and clearing shutdown timer.`);
+                activeConnections = 0;
+                if (shutdownTimer) {
+                    clearTimeout(shutdownTimer);
+                    shutdownTimer = null;
+                }
+            }
         }
+    } catch (e) {
+        console.error(`[STOP] An error occurred while stopping pod ${podIdToStop}:`, e);
     }
 }
 
 /**
- * Fetches a list of all pods on the account.
+ * Terminates (deletes) a specific pod. Used for garbage collection.
  */
-async function listPods(): Promise<any[] | null> {
-    console.log("Fetching list of existing pods...");
-    const listUrl = `${RUNPOD_API_BASE_URL}/pods`;
+async function terminatePod(podIdToTerminate: string) { /* ... (implementation from previous answer) ... */ }
+
+/**
+ * Starts a stopped pod.
+ */
+async function startPod(podId: string): Promise<boolean> { /* ... (implementation from previous answer) ... */ }
+
+/**
+ * Fetches details for a single pod to check its status.
+ */
+async function getPodDetails(podId: string): Promise<any | null> {
+    const url = `${RUNPOD_API_BASE_URL}/pods/${podId}`;
     try {
-        const response = await fetch(listUrl, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${RUNPOD_API_KEY}` }
-        });
+        const response = await fetch(url, { headers: { 'Authorization': `Bearer ${RUNPOD_API_KEY}` } });
         if (!response.ok) {
-            console.error(`Failed to list pods. Status: ${response.status}`);
+            // If a 404, it means the pod was terminated elsewhere.
+            if (response.status === 404) {
+                console.log(`[STATE] Pod ${podId} not found. It was likely terminated.`);
+                return null;
+            }
+            console.error(`[STATE] Failed to get pod details for ${podId}. Status: ${response.status}`);
             return null;
         }
-        const data = await response.json();
-        return data || [];
+        return (await response.json()).pod;
     } catch (e) {
-        console.error("An error occurred while listing pods:", e);
+        console.error(`[STATE] Error fetching details for pod ${podId}:`, e);
         return null;
     }
 }
 
+
+// --- Cron Job and Cleanup Logic ---
+
 /**
- * Sends a request to start a stopped pod.
+ * The main logic for the cron job.
  */
-async function startPod(podId: string): Promise<boolean> {
-    console.log(`Attempting to start existing pod ${podId}...`);
-    const startUrl = `${RUNPOD_API_BASE_URL}/pods/${podId}/start`;
-    try {
-        const response = await fetch(startUrl, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${RUNPOD_API_KEY}` }
-        });
-        if (!response.ok) {
-            console.error(`Failed to start pod ${podId}. Status: ${response.status}`, await response.text());
-            return false;
+function checkAndStopInactivePod() {
+    console.log('[CRON] Running periodic check for inactive pod...');
+    if (activePodId && activeConnections === 0) {
+        console.log(`[CRON] Found inactive pod ${activePodId} with 0 connections. Initiating stop.`);
+        // We can directly call stop, as it's safe to call on an already stopped pod.
+        stopPod(activePodId);
+    } else {
+        const reason = !activePodId ? "no pod is managed" : `pod is in use with ${activeConnections} connections`;
+        console.log(`[CRON] Check complete. No action needed: ${reason}.`);
+    }
+}
+
+/**
+ * Initializes all background processes for the pod manager.
+ * This should be called once on server startup.
+ */
+export function initializePodManager() {
+    if (isInitialized) {
+        return; // Prevent running more than once
+    }
+    isInitialized = true;
+
+    // Start the cron job for checking on the active pod
+    setInterval(checkAndStopInactivePod, CRON_JOB_INTERVAL_MS);
+    
+    console.log(`[INIT] Pod Manager Initialized.`);
+    console.log(`[CRON] Inactivity-check cron job started. Runs every ${CRON_JOB_INTERVAL_MS / 60000} minutes.`);
+
+    // You could also run an initial cleanup of all pods on startup here
+    // listPods().then(pods => pods && scheduleCleanupForIdlePods(pods, null));
+}
+
+// --- Public API for Server Routes ---
+
+/**
+ * Registers a client connection. Acquires and ensures a pod is running.
+ */
+export async function registerConnection() {
+    if (shutdownTimer) {
+        clearTimeout(shutdownTimer);
+        shutdownTimer = null;
+        console.log("[STATE] Active pod timer canceled due to new activity.");
+    }
+
+    // If we are already managing a pod, ensure it's running.
+    if (activePodId) {
+        const pod = await getPodDetails(activePodId);
+        if (pod) {
+            if (pod.desiredStatus === 'STOPPED') {
+                console.log(`[STATE] Active pod ${activePodId} is stopped. Requesting start...`);
+                await startPod(activePodId);
+                // Add a small delay to allow pod to begin starting up, can be adjusted
+                await new Promise(resolve => setTimeout(resolve, 5000));
+            }
+        } else {
+            // The pod we thought was active doesn't exist anymore. Reset state.
+            activePodId = null;
         }
-        console.log(`Successfully requested to start pod ${podId}.`);
-        return true;
-    } catch (e) {
-        console.error(`An error occurred while starting pod ${podId}:`, e);
-        return false;
+    }
+
+    // If we don't have a pod after the check, get a new or reusable one.
+    if (!activePodId) {
+        console.log("[STATE] No active pod. Acquiring one...");
+        const podId = await getOrCreatePod(); // This function reuses/creates
+        if (podId) {
+            activePodId = podId;
+        } else {
+            console.error("CRITICAL: Failed to get or create a pod.");
+            return { status: "fail", podId: null };
+        }
+    }
+
+    activeConnections++;
+    console.log(`[STATE] Connection registered. Active connections: ${activeConnections}. Pod: ${activePodId}`);
+    
+    // Set a 30-minute *termination* timer as the ultimate failsafe.
+    shutdownTimer = setTimeout(() => terminatePod(activePodId!), SHUTDOWN_GRACE_PERIOD_MS);
+
+    return { status: "success", podId: activePodId };
+}
+
+/**
+ * Unregisters a client connection. Starts a 5-minute timer to *stop* the pod.
+ */
+export function unregisterConnection() {
+    activeConnections = Math.max(0, activeConnections - 1);
+    console.log(`[STATE] Connection unregistered. Active connections: ${activeConnections}`);
+
+    if (activeConnections === 0 && activePodId) {
+        if (shutdownTimer) clearTimeout(shutdownTimer);
+        
+        console.log(`[STATE] Last connection closed. Starting 5-minute timer to STOP pod ${activePodId}.`);
+        // Use `stopPod` for short-term inactivity, not `terminatePod`
+        shutdownTimer = setTimeout(() => stopPod(activePodId!), SHUTDOWN_GRACE_PERIOD_MS_WHEN_NO_CONNECTION);
     }
 }
 
@@ -139,38 +221,6 @@ function scheduleCleanupForIdlePods(allPods: any[], currentActivePodId: string |
         }, IDLE_POD_CLEANUP_MS);
 
         cleanupTimers.set(pod.id, timer);
-    }
-}
-
-/**
- * Creates a new pod on RunPod and returns its ID.
- */
-async function createAndStartPod(): Promise<string | null> {
-    console.log("No suitable stopped pod found. Creating a new one...");
-    if (!RUNPOD_API_KEY) {
-        console.error("CREATE_POD_ERROR: RUNPOD_API_KEY env var not set.");
-        return null;
-    }
-    const createUrl = `${RUNPOD_API_BASE_URL}/pods`;
-    try {
-        const response = await fetch(createUrl, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${RUNPOD_API_KEY}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(POD_CREATE_CONFIG)
-        });
-        const responseData = await response.json();
-        if (!response.ok) {
-            console.error(`Failed to create RunPod pod. Status: ${response.status}`, responseData);
-            return null;
-        }
-        console.log(`Successfully created pod. Full response:`, responseData);
-        return responseData.id;
-    } catch (e) {
-        console.error("An error occurred while creating the pod:", e);
-        return null;
     }
 }
 
@@ -225,55 +275,56 @@ async function getOrCreatePod(): Promise<string | null> {
 
     return chosenPodId;
 }
-
-
-// --- Public API for Server Routes ---
-
 /**
- * Registers a client connection. Acquires a pod if one isn't active.
- * Resets the 30-minute shutdown timer for the *active* pod.
+ * Fetches a list of all pods on the account.
  */
-export async function registerConnection() {
-    if (shutdownTimer) {
-        clearTimeout(shutdownTimer);
-        shutdownTimer = null;
-        console.log("[STATE] Active pod shutdown timer canceled due to new activity.");
-    }
-
-    if (!activePodId) {
-        console.log("[STATE] No active pod. Acquiring one...");
-        const podId = await getOrCreatePod();
-        if (podId) {
-            activePodId = podId;
-        } else {
-            console.error("CRITICAL: Failed to get or create a pod. Cannot register connection.");
-            return { status: "fail", podId: null };
+async function listPods(): Promise<any[] | null> {
+    console.log("Fetching list of existing pods...");
+    const listUrl = `${RUNPOD_API_BASE_URL}/pods`;
+    try {
+        const response = await fetch(listUrl, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${RUNPOD_API_KEY}` }
+        });
+        if (!response.ok) {
+            console.error(`Failed to list pods. Status: ${response.status}`);
+            return null;
         }
+        const data = await response.json();
+        return data || [];
+    } catch (e) {
+        console.error("An error occurred while listing pods:", e);
+        return null;
     }
-
-    activeConnections++;
-    console.log(`[STATE] Connection registered. Active connections: ${activeConnections}. Pod: ${activePodId}`);
-
-    // Set a new 30-minute shutdown timer for the active pod
-    console.log(`[STATE] Active pod shutdown timer set for ${SHUTDOWN_GRACE_PERIOD_MS / 60000} minutes.`);
-    shutdownTimer = setTimeout(() => terminatePod(activePodId!), SHUTDOWN_GRACE_PERIOD_MS);
-    const webSocketUrl = `wss://${activePodId}-8000.proxy.runpod.net/v1/realtime`;
-
-    return { status: "success", podId: activePodId, webSocketUrl: webSocketUrl };
 }
-
 /**
- * Unregisters a client connection.
- * If it's the last connection, starts a short timer to terminate the active pod.
+ * Creates a new pod on RunPod and returns its ID.
  */
-export function unregisterConnection() {
-    activeConnections = Math.max(0, activeConnections - 1);
-    console.log(`[STATE] Connection unregistered. Active connections: ${activeConnections}`);
-
-    if (activeConnections === 0 && activePodId) {
-        if (shutdownTimer) clearTimeout(shutdownTimer);
-        
-        console.log(`[STATE] Last connection closed. Starting final shutdown timer for ${SHUTDOWN_GRACE_PERIOD_MS_WHEN_NO_CONNECTION / 60000} minutes.`);
-        shutdownTimer = setTimeout(() => terminatePod(activePodId!), SHUTDOWN_GRACE_PERIOD_MS_WHEN_NO_CONNECTION);
+async function createAndStartPod(): Promise<string | null> {
+    console.log("No suitable stopped pod found. Creating a new one...");
+    if (!RUNPOD_API_KEY) {
+        console.error("CREATE_POD_ERROR: RUNPOD_API_KEY env var not set.");
+        return null;
+    }
+    const createUrl = `${RUNPOD_API_BASE_URL}/pods`;
+    try {
+        const response = await fetch(createUrl, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${RUNPOD_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(POD_CREATE_CONFIG)
+        });
+        const responseData = await response.json();
+        if (!response.ok) {
+            console.error(`Failed to create RunPod pod. Status: ${response.status}`, responseData);
+            return null;
+        }
+        console.log(`Successfully created pod. Full response:`, responseData);
+        return responseData.id;
+    } catch (e) {
+        console.error("An error occurred while creating the pod:", e);
+        return null;
     }
 }

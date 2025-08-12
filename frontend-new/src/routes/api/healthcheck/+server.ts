@@ -1,8 +1,6 @@
-// src/routes/api/healthcheck/+server.ts
-
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-
+import { error } from '@sveltejs/kit';
 
 export const POST: RequestHandler = async ({ request }) => {
     const { podId } = (await request.json()) as { podId: string };
