@@ -2,17 +2,18 @@
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { POD_ID } from '$env/static/private';
 
 
-export const GET: RequestHandler = async () => {
-    if (!POD_ID) {
-        console.error("POD_ID environment variable is not set.");
+export const POST: RequestHandler = async ({ request }) => {
+    const { podId } = (await request.json()) as { podId: string };
+
+    if (!podId) {
+        console.error("podId variable is not set.");
         throw error(500, 'Server configuration error.');
     }
     
 
-    const healthcheckUrl = `https://${POD_ID}-8000.proxy.runpod.net/metrics`;
+    const healthcheckUrl = `https://${podId}-8000.proxy.runpod.net/metrics`;
 
     try {
         const response = await fetch(healthcheckUrl, {

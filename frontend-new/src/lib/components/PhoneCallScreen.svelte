@@ -37,7 +37,7 @@
   let audioProcessorMain: AudioProcessor | undefined;
   let webSocketUrl: string | null = null;
   let connectingAudio: HTMLAudioElement;
-  let healthCheckUrl: string | null = null;
+  let podId: string | null = null;
   // let chatHistory: ChatMessage[] = [];
   // Dummy chat history for demonstration
   let chatHistory: ChatMessage[] = [
@@ -49,12 +49,13 @@
   let status: 'online' | 'offline' = 'offline';
 
   const checkHealth = async() => {
-    if (!healthCheckUrl) {
-      status = 'offline';
-      return;
-    }
     try {
-      const response = await fetch(healthCheckUrl);
+      const response = await fetch('/api/healthcheck', 
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ podId: podId })
+      });
       if (response.ok) {
         status = 'online';
       } else {
@@ -80,8 +81,8 @@
         if (result.webSocketUrl) {
           webSocketUrl = result.webSocketUrl;
         }
-        if (result.healthCheckUrl) {
-          healthCheckUrl = result.healthCheckUrl;
+        if (result.podId) {
+          podId = result.podId;
         }
       });
     } catch (e) {
