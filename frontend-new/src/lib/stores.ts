@@ -70,11 +70,11 @@ export const generateReport = async (chatHistory: ChatMessage[]) => {
 
     const reportData: ReportData = await response.json();
 
-    const reportHistory = JSON.parse(localStorage["reportHistory"]) || [];
+    const reportHistory = JSON.parse(localStorage['reportHistory'] || '[]') || [];
 
     const newReportHistory = [...reportHistory, reportData];
 
-    localStorage["reportHistory"] = JSON.stringify(newReportHistory); 
+    localStorage['reportHistory'] = JSON.stringify(newReportHistory); 
     
     // 4. On success, update the store
     reportStore.set({ status: 'success', data: reportData, error: null });
