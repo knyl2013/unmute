@@ -63,12 +63,64 @@ async function stopPod(podIdToStop: string) {
 /**
  * Terminates (deletes) a specific pod. Used for garbage collection.
  */
-async function terminatePod(podIdToTerminate: string) { /* ... (implementation from previous answer) ... */ }
+async function terminatePod(podIdToTerminate: string) {
+    console.log(`[TERMINATE] Attempting to terminate pod ${podIdToTerminate}.`);
+    if (!RUNPOD_API_KEY) {
+        console.error("TERMINATE_POD_ERROR: RUNPOD_API_KEY env var not set.");
+        return;
+    }
+    // Clear any pending cleanup timer for this pod
+    if (cleanupTimers.has(podIdToTerminate)) {
+        clearTimeout(cleanupTimers.get(podIdToTerminate)!);
+        cleanupTimers.delete(podIdToTerminate);
+        console.log(`[TERMINATE] Cleared background cleanup timer for ${podIdToTerminate}.`);
+    }
+
+    const terminateUrl = `${RUNPOD_API_BASE_URL}/pods/${podIdToTerminate}/terminate`;
+
+    try {
+        await fetch(terminateUrl, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${RUNPOD_API_KEY}` }
+        });
+
+        console.log(`[TERMINATE] Successfully requested termination for pod ${podIdToTerminate}.`);
+    } catch (e) {
+        console.error(`[TERMINATE] An error occurred while terminating pod ${podIdToTerminate}:`, e);
+    } finally {
+        // If this was our active pod, reset the server's state
+        if (activePodId === podIdToTerminate) {
+            console.log("[STATE] Resetting active pod state.");
+            activePodId = null;
+            activeConnections = 0;
+            shutdownTimer = null;
+        }
+    }
+
+}
 
 /**
  * Starts a stopped pod.
  */
-async function startPod(podId: string): Promise<boolean> { /* ... (implementation from previous answer) ... */ }
+async function startPod(podId: string): Promise<boolean> {
+    console.log(`Attempting to start existing pod ${podId}...`);
+    const startUrl = `${RUNPOD_API_BASE_URL}/pods/${podId}/start`;
+    try {
+        const response = await fetch(startUrl, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${RUNPOD_API_KEY}` }
+        });
+        if (!response.ok) {
+            console.error(`Failed to start pod ${podId}. Status: ${response.status}`, await response.text());
+            return false;
+        }
+        console.log(`Successfully requested to start pod ${podId}.`);
+        return true;
+    } catch (e) {
+        console.error(`An error occurred while starting pod ${podId}:`, e);
+        return false;
+    }
+}
 
 /**
  * Fetches details for a single pod to check its status.
