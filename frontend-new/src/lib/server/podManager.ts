@@ -151,15 +151,17 @@ async function getPodDetails(podId: string): Promise<any | null> {
 /**
  * The main logic for the cron job.
  */
-function checkAndStopInactivePod() {
-    console.log('[CRON] Running periodic check for inactive pod...');
-    if (activePodId && activeConnections === 0) {
-        console.log(`[CRON] Found inactive pod ${activePodId} with 0 connections. Initiating stop.`);
-        // We can directly call stop, as it's safe to call on an already stopped pod.
-        stopPod(activePodId);
-    } else {
-        const reason = !activePodId ? "no pod is managed" : `pod is in use with ${activeConnections} connections`;
-        console.log(`[CRON] Check complete. No action needed: ${reason}.`);
+async function checkAndStopInactivePods() {
+    console.log('[CRON] Running periodic check for inactive pods...');
+    const allPods = await listPods() || [];
+    for (const pod of allPods) {
+        if (pod && pod.id) {
+            const shouldStop = !cleanupTimers || !cleanupTimers.has(pod.id);
+            if (shouldStop) {
+                stopPod(pod.id);
+                console.log(`[CRON] Found inactive pod ${activePodId}. Initiating stop.`);
+            } 
+        }
     }
 }
 
@@ -174,7 +176,7 @@ export function initializePodManager() {
     isInitialized = true;
 
     // Start the cron job for checking on the active pod
-    setInterval(checkAndStopInactivePod, CRON_JOB_INTERVAL_MS);
+    setInterval(checkAndStopInactivePods, CRON_JOB_INTERVAL_MS);
     
     console.log(`[INIT] Pod Manager Initialized.`);
     console.log(`[CRON] Inactivity-check cron job started. Runs every ${CRON_JOB_INTERVAL_MS / 60000} minutes.`);
