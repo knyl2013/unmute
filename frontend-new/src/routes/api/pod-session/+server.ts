@@ -8,9 +8,14 @@ export const POST: RequestHandler = async ({ request }) => {
 
     switch (action) {
         case 'register':
-            registerConnection();
-            return json({ success: true, message: 'Connection registered.' });
-        
+            const res = await registerConnection();
+            if (res?.status === "success" && res.podId) {
+                const webSocketUrl = `wss://${res.podId}-8000.proxy.runpod.net/v1/realtime`;
+                const healthCheckUrl = `https://${res.podId}-8000.proxy.runpod.net/metrics`;
+                return json({ success: true, message: 'Connection registered.', podId: res.podId, webSocketUrl: webSocketUrl, healthCheckUrl: healthCheckUrl});
+            } else {
+                return json({ success: false, message: 'Connection failed.'})
+            }        
         case 'unregister':
             unregisterConnection();
             return json({ success: true, message: 'Connection unregistered.' });

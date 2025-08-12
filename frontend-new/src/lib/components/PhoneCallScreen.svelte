@@ -37,6 +37,7 @@
   let audioProcessorMain: AudioProcessor | undefined;
   let webSocketUrl: string | null = null;
   let connectingAudio: HTMLAudioElement;
+  let healthCheckUrl: string | null = null;
   // let chatHistory: ChatMessage[] = [];
   // Dummy chat history for demonstration
   let chatHistory: ChatMessage[] = [
@@ -48,11 +49,14 @@
   let status: 'online' | 'offline' = 'offline';
 
   const checkHealth = async() => {
+    if (!healthCheckUrl) {
+      status = 'offline';
+      return;
+    }
     try {
-      const response = await fetch('/api/healthcheck');
+      const response = await fetch(healthCheckUrl);
       if (response.ok) {
-        const data = await response.json();
-        status = data.status; 
+        status = 'online';
       } else {
         status = 'offline';
       }
@@ -71,6 +75,14 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action }),
         keepalive: action === 'unregister',
+      }).then(async res => {
+        const result = await res.json();
+        if (result.webSocketUrl) {
+          webSocketUrl = result.webSocketUrl;
+        }
+        if (result.healthCheckUrl) {
+          healthCheckUrl = result.healthCheckUrl;
+        }
       });
     } catch (e) {
       console.error(`Failed to ${action} connection:`, e);
@@ -83,15 +95,6 @@
     setupAudio = audioProcessor.setupAudio;
     shutdownAudio = audioProcessor.shutdownAudio;
     processorStore = audioProcessor.processorStore;
-
-    fetch('/api/websocket-url', {method: 'POST'}).then(async response => {
-      if (!response.ok) {
-        throw new Error(`Failed to fetch WebSocket URL: ${response.statusText}`);
-      }
-      const data = await response.json();
-      webSocketUrl = data.url; // Store the URL
-    });
-    
 
     isReady = true;
 
