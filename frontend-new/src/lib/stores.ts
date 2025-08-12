@@ -19,6 +19,7 @@ export const now = readable(new Date(), (set) => {
 });
 
 export interface ReportData {
+  date: Date;
   overallScore: number;
   feedback: string;
   scores: {
@@ -68,6 +69,12 @@ export const generateReport = async (chatHistory: ChatMessage[]) => {
     }
 
     const reportData: ReportData = await response.json();
+
+    const reportHistory = JSON.parse(localStorage["reportHistory"]) || [];
+
+    const newReportHistory = [...reportHistory, reportData];
+
+    localStorage["reportHistory"] = JSON.stringify(newReportHistory); 
     
     // 4. On success, update the store
     reportStore.set({ status: 'success', data: reportData, error: null });

@@ -63,6 +63,8 @@ export const POST: RequestHandler = async ({ request }) => {
     // Parse the JSON string from the AI to ensure it's valid before sending
     const reportData = JSON.parse(reportJson);
 
+    reportData.date = new Date();
+
     return json(reportData);
 
   } catch (err: any) {
