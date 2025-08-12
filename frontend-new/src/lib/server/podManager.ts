@@ -5,12 +5,10 @@ import { error } from '@sveltejs/kit';
 let isInitialized = false;
 let activePodId: string | null = null;
 let activeConnections = 0;
-let shutdownTimer: NodeJS.Timeout | null = null;
 const cleanupTimers = new Map<string, NodeJS.Timeout>();
 
 // --- Constants ---
 const SHUTDOWN_GRACE_PERIOD_MS = 30 * 60 * 1000;
-const SHUTDOWN_GRACE_PERIOD_MS_WHEN_NO_CONNECTION = 5 * 60 * 1000;
 const IDLE_POD_CLEANUP_MS = 30 * 60 * 1000;
 const CRON_JOB_INTERVAL_MS = 5 * 60 * 1000; // 5-minute cron interval
 
@@ -49,10 +47,6 @@ async function stopPod(podIdToStop: string) {
             if (activePodId === podIdToStop) {
                 console.log(`[STATE] Pod stopped. Resetting connection count and clearing shutdown timer.`);
                 activeConnections = 0;
-                if (shutdownTimer) {
-                    clearTimeout(shutdownTimer);
-                    shutdownTimer = null;
-                }
             }
         }
     } catch (e) {
@@ -93,7 +87,6 @@ async function terminatePod(podIdToTerminate: string) {
             console.log("[STATE] Resetting active pod state.");
             activePodId = null;
             activeConnections = 0;
-            shutdownTimer = null;
         }
     }
 
@@ -191,12 +184,6 @@ export function initializePodManager() {
  * Registers a client connection. Acquires and ensures a pod is running.
  */
 export async function registerConnection() {
-    if (shutdownTimer) {
-        clearTimeout(shutdownTimer);
-        shutdownTimer = null;
-        console.log("[STATE] Active pod timer canceled due to new activity.");
-    }
-
     // If we are already managing a pod, ensure it's running.
     if (activePodId) {
         const pod = await getPodDetails(activePodId);
@@ -228,9 +215,16 @@ export async function registerConnection() {
     activeConnections++;
     console.log(`[STATE] Connection registered. Active connections: ${activeConnections}. Pod: ${activePodId}`);
     
-    // Set a 30-minute *termination* timer as the ultimate failsafe.
-    shutdownTimer = setTimeout(() => terminatePod(activePodId!), SHUTDOWN_GRACE_PERIOD_MS);
-
+    console.log(`[CLEANUP] Scheduling 30-minute termination for idle pod ${activePodId}.`);
+    if (cleanupTimers.has(activePodId!)) {
+        clearTimeout(cleanupTimers.get(activePodId!));
+        console.log("[STATE] Active pod timer canceled due to new activity.");
+    }
+    const timer = setTimeout(() => {
+        console.log(`[CLEANUP] Idle timer expired for pod ${activePodId}.`);
+        terminatePod(activePodId!);
+    }, SHUTDOWN_GRACE_PERIOD_MS);
+    cleanupTimers.set(activePodId!, timer);
     return { status: "success", podId: activePodId };
 }
 
@@ -240,14 +234,6 @@ export async function registerConnection() {
 export function unregisterConnection() {
     activeConnections = Math.max(0, activeConnections - 1);
     console.log(`[STATE] Connection unregistered. Active connections: ${activeConnections}`);
-
-    if (activeConnections === 0 && activePodId) {
-        if (shutdownTimer) clearTimeout(shutdownTimer);
-        
-        console.log(`[STATE] Last connection closed. Starting 5-minute timer to STOP pod ${activePodId}.`);
-        // Use `stopPod` for short-term inactivity, not `terminatePod`
-        shutdownTimer = setTimeout(() => stopPod(activePodId!), SHUTDOWN_GRACE_PERIOD_MS_WHEN_NO_CONNECTION);
-    }
 }
 
 /**
