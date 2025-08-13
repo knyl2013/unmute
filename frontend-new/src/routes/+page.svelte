@@ -14,7 +14,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
+    min-height: 100dvh;
     background-color: #1c1c1e; /* A dark background to match the theme */
   }
 </style>
