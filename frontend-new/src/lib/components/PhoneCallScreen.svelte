@@ -2,7 +2,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { ScreenWakeLock } from "svelte-screen-wake-lock";
-  import FaMicrophoneSlash from 'svelte-icons/fa/FaMicrophoneSlash.svelte'
   import FaPhoneSlash from 'svelte-icons/fa/FaPhoneSlash.svelte'
   import FaPhone from 'svelte-icons/fa/FaPhone.svelte'
   
@@ -30,6 +29,7 @@
   let shouldConnect = false; // This is our main trigger for the connection
   let ws: WebSocket | null = null;
   let readyState: 'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED' | 'FAILED' = 'CLOSED';
+  let conversationState: 'bot_speaking' | 'user_speaking' | 'waiting_for_user' = 'waiting_for_user'
   let isReady = false;
   let setupAudio: (mediaStream: MediaStream) => Promise<AudioProcessor | undefined>;
   let shutdownAudio: () => void;
@@ -233,6 +233,7 @@
           }
         } else if (message.type === 'unmute.additional_outputs') {
           console.log('Received metadata message:', message);
+          conversationState = message.args.debug_dict.conversation_state;
           chatHistory = message.args.chat_history;
         } else {
           console.log('Received unknown message:', message);
@@ -299,6 +300,14 @@
     <div class="profileImageContainer">
       <img src={imageUrl} alt={name} class="profileImage" />
     </div>
+    <div 
+      class="profileImageContainerSpinner"
+      class:shouldShow={conversationState === 'user_speaking'}
+    ></div>
+    <div 
+      class="profileImageContainerSpeakingBorder"
+      class:shouldShow={conversationState === 'bot_speaking'}
+    ></div>
   </main>
 
   <footer class="footerControls">
@@ -499,11 +508,53 @@
     flex-basis: 100%;
     width: 0;
   }
+
+  .profileImageContainerSpinner.shouldShow {
+    display: block;
+  }
+  .profileImageContainerSpinner {
+    display: none;
+    position: fixed;
+    width: 170px;
+    height: 170px;
+    border-radius: 50%;
+    border-radius: 50%;
+    border: 3px dashed #34c759;
+    animation: spin 5s linear infinite;
+  }
+
+  .profileImageContainerSpeakingBorder.shouldShow {
+    display: block;
+  }
+  .profileImageContainerSpeakingBorder {
+    display: none;
+    position: fixed;
+    width: 170px;
+    height: 170px;
+    border-radius: 50%;
+    border-radius: 50%;
+    border: 1px solid lightgrey;
+    animation: pulse 1s infinite;
+  }
   
-  /* The keyframes for the spinning animation */
   @keyframes spin {
     to {
       transform: rotate(360deg);
+    }
+  }
+
+  @keyframes pulse {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.1);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
     }
   }
 </style>
