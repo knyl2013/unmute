@@ -1,39 +1,80 @@
 <script lang="ts">
-  import { reportStore } from '$lib/stores';
+  import { reportStore, type ReportData } from '$lib/stores';
+  import { page } from '$app/stores'; // Import page store to get URL params
   import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
 
-  // Subscribe to the store to get reactive updates
-  $: reportState = $reportStore;
+  // Define types for clarity
+  type ReportState = {
+    status: 'generating' | 'success' | 'error' | 'idle';
+    data?: ReportData;
+    error?: string;
+  };
+  
+  let currentReportState: ReportState;
+  
+  // Get the report ID (date) from the URL
+  const reportId = $page.params.id;
 
-  // Helper to format the criterion keys into readable titles
+  onMount(() => {
+    // If the ID is 'latest', it means we are showing a newly generated report.
+    // We get this from the store.
+    if (reportId === 'latest') {
+      const unsubscribe = reportStore.subscribe(value => {
+        currentReportState = {
+            status: value.status,
+            data: value.data ?? undefined,
+            error: value.error ?? undefined
+        }
+      });
+      return unsubscribe;
+    } else {
+      // Otherwise, we are viewing a report from history. Load it from localStorage.
+      try {
+        const rawHistory = localStorage.getItem('reportHistory');
+        if (rawHistory) {
+          const history: ReportData[] = JSON.parse(rawHistory);
+          const foundReport = history.find(report => report.date.toString() === decodeURIComponent(reportId || ""));
+          
+          if (foundReport) {
+            currentReportState = { status: 'success', data: foundReport };
+          } else {
+            currentReportState = { status: 'error', error: 'Report not found in your history.' };
+          }
+        } else {
+          currentReportState = { status: 'error', error: 'No report history found.' };
+        }
+      } catch (e) {
+        currentReportState = { status: 'error', error: 'Failed to load report from history.' };
+      }
+    }
+  });
+
   const formatCriterionName = (key: string) => {
     return key.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
   };
 </script>
 
 <div class="reportContainer">
-  {#if reportState.status === 'generating'}
-    <!-- Loading State -->
+  {#if (!currentReportState || currentReportState.status === 'generating')}
     <div class="statusContainer">
       <div class="spinner"></div>
       <h1 class="statusTitle">Generating Report</h1>
       <p class="statusSubtitle">Analyzing your conversation, please wait...</p>
     </div>
-  {:else if reportState.status === 'error'}
-    <!-- Error State -->
+  {:else if currentReportState.status === 'error'}
     <div class="statusContainer">
       <h1 class="statusTitle error">Report Failed</h1>
-      <p class="statusSubtitle">{reportState.error || 'An unknown error occurred.'}</p>
+      <p class="statusSubtitle">{currentReportState.error || 'An unknown error occurred.'}</p>
       <div class="footerControls">
         <a href="/" class="actionButton start">Try Again</a>
       </div>
     </div>
-  {:else if reportState.status === 'success' && reportState.data}
-    {@const report = reportState.data}
-    <!-- Success State: The Main Report -->
+  {:else if currentReportState.status === 'success' && currentReportState.data}
+    {@const report = currentReportState.data}
     <header class="header">
       <button class="backButton" on:click={() => goto('/')} aria-label="Back">
-        <!-- SVG for Back Chevron -->
+        <!-- ... Back SVG ... -->
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M15.41 7.41L14 6L8 12L14 18L15.41 16.59L10.83 12L15.41 7.41Z" fill="white"/>
         </svg>
@@ -42,9 +83,14 @@
         <h1>Your IELTS Report</h1>
         <p>A detailed breakdown of your performance</p>
       </div>
+      <button class="historyButton" on:click={() => goto('/history')} aria-label="View History">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M13 3C8.03 3 4 7.03 4 12H1L4.89 15.89L9 12H6C6 8.13 9.13 5 13 5C16.87 5 20 8.13 20 12C20 15.87 16.87 19 13 19C11.07 19 9.32 18.21 8.06 16.94L6.64 18.36C8.27 19.99 10.51 21 13 21C17.97 21 22 16.97 22 12C22 7.03 17.97 3 13 3ZM12 8V13L16.28 15.54L17 14.33L13.5 12.25V8H12Z" fill="white"/>
+        </svg>
+      </button>
     </header>
-
-    <main class="mainContent">
+  
+   <main class="mainContent">
       <!-- Overall Score Section -->
       <section class="overallScoreSection">
         <div class="scoreCircle">
@@ -82,16 +128,11 @@
         </ul>
       </section>
     </main>
-
-    <footer class="footerControls">
-      <a href="/" class="actionButton start">Start a New Call</a>
-    </footer>
   {/if}
 </div>
 
 <style>
-  /* Base Container & Font (copied from your style) */
-  .reportContainer {
+ .reportContainer {
     width: 100vw;
     height: 100vh;
     height: 100dvh;
@@ -339,5 +380,22 @@
     to {
       transform: rotate(360deg);
     }
+  }
+
+  .historyButton {
+    position: absolute;
+    right: 15px;
+    top: 55px;
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 5px;
+    opacity: 0.8;
+    transition: opacity 0.2s ease;
+  }
+
+  .historyButton:hover {
+    opacity: 1;
   }
 </style>

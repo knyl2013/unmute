@@ -44,19 +44,18 @@ export const reportStore = writable<ReportState>({
   error: null,
 });
 
-// Helper function to trigger report generation
 export const generateReport = async (chatHistory: ChatMessage[]) => {
-  // 1. Set status to 'generating'
+  // 1. Set status to 'generating'. The /report/latest page will see this change.
   reportStore.set({ status: 'generating', data: null, error: null });
 
   try {
-    // 2. Filter for user messages only, as that's what we want to evaluate
+    // 2. Filter for user messages only
     const userMessages = chatHistory.filter(msg => msg.role === 'user');
     if (userMessages.length < 10) {
-      throw new Error("Not enough user data to generate a report. Please try again and chat at least for a minute");
+      throw new Error("Not enough conversation data to generate a report. Please try again and chat for a bit longer.");
     }
-    
-    // 3. Call our internal SvelteKit API endpoint
+
+    // 3. Call your API endpoint
     const response = await fetch('/api/generate-report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -69,18 +68,17 @@ export const generateReport = async (chatHistory: ChatMessage[]) => {
     }
 
     const reportData: ReportData = await response.json();
-
-    const reportHistory = JSON.parse(localStorage['reportHistory'] || '[]') || [];
-
-    const newReportHistory = [...reportHistory, reportData];
-
-    localStorage['reportHistory'] = JSON.stringify(newReportHistory); 
     
-    // 4. On success, update the store
+    const reportHistory = JSON.parse(localStorage.getItem('reportHistory') || '[]') || [];
+    const newReportHistory = [...reportHistory, reportData];
+    localStorage.setItem('reportHistory', JSON.stringify(newReportHistory));
+
+    // 4. On success, update the store. The /report/latest page will reactively
+    // update from 'generating' to show the full report.
     reportStore.set({ status: 'success', data: reportData, error: null });
 
   } catch (err: any) {
-    // 5. On failure, update the store
+    // 5. On failure, update the store. The /report/latest page will show the error.
     console.error("Report generation failed:", err);
     reportStore.set({ status: 'error', data: null, error: err.message });
   }
