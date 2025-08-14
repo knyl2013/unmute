@@ -233,6 +233,9 @@ export async function registerConnection() {
  */
 export function unregisterConnection() {
     activeConnections = Math.max(0, activeConnections - 1);
+    if (activePodId && activeConnections === 0) {
+        stopPod(activePodId);
+    }
     console.log(`[STATE] Connection unregistered. Active connections: ${activeConnections}`);
 }
 
