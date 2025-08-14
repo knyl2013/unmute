@@ -16,6 +16,19 @@
   // Get the report ID (date) from the URL
   const reportId = $page.params.id;
 
+  const goBack = () => {
+    // The history API is available in all modern browsers.
+    // We check the length to see if there is a previous page in the session history.
+    if (window.history.length > 1) {
+      // If there is, go back to it (e.g., /history or /)
+      window.history.back();
+    } else {
+      // Otherwise, as a fallback, go to the home page. This handles cases
+      // where the user refreshed the page or opened it from a direct link.
+      goto('/');
+    }
+  };
+
   onMount(() => {
     // If the ID is 'latest', it means we are showing a newly generated report.
     // We get this from the store.
@@ -73,7 +86,7 @@
   {:else if currentReportState.status === 'success' && currentReportState.data}
     {@const report = currentReportState.data}
     <header class="header">
-      <button class="backButton" on:click={() => goto('/')} aria-label="Back">
+      <button class="backButton" on:click={goBack} aria-label="Back">
         <!-- ... Back SVG ... -->
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M15.41 7.41L14 6L8 12L14 18L15.41 16.59L10.83 12L15.41 7.41Z" fill="white"/>
