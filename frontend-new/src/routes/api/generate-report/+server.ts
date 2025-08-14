@@ -44,7 +44,8 @@ export const POST: RequestHandler = async ({ request }) => {
         "suggestionsForImprovement": [
           "<string: Actionable suggestion 1>",
           "<string: Actionable suggestion 2>"
-        ]
+        ],
+        "conversationSummary": "<string: Short summary for the conversation"
       }
     `;
 

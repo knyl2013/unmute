@@ -50,8 +50,7 @@ export const generateReport = async (chatHistory: ChatMessage[]) => {
 
   try {
     // 2. Filter for user messages only
-    const userMessages = chatHistory.filter(msg => msg.role === 'user');
-    if (userMessages.length < 10) {
+    if (chatHistory.length < 10) {
       throw new Error("Not enough conversation data to generate a report. Please try again and chat for a bit longer.");
     }
 
@@ -59,7 +58,7 @@ export const generateReport = async (chatHistory: ChatMessage[]) => {
     const response = await fetch('/api/generate-report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ conversation: userMessages }),
+      body: JSON.stringify({ conversation: chatHistory }),
     });
 
     if (!response.ok) {
