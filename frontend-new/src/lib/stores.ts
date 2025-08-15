@@ -44,17 +44,14 @@ export const reportStore = writable<ReportState>({
   error: null,
 });
 
-export const generateReport = async (chatHistory: ChatMessage[]) => {
-  // 1. Set status to 'generating'. The /report/latest page will see this change.
+export const generateReport = async (chatHistory: ChatMessage[], isReportReady: boolean) => {
   reportStore.set({ status: 'generating', data: null, error: null });
 
   try {
-    // 2. Filter for user messages only
-    if (chatHistory.length < 10) {
+    if (!isReportReady) {
       throw new Error("Not enough conversation data to generate a report. Please try again and chat for a bit longer.");
     }
 
-    // 3. Call your API endpoint
     const response = await fetch('/api/generate-report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

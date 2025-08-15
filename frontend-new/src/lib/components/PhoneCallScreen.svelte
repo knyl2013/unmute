@@ -4,6 +4,7 @@
   import { ScreenWakeLock } from "svelte-screen-wake-lock";
   import FaPhoneSlash from 'svelte-icons/fa/FaPhoneSlash.svelte'
   import FaPhone from 'svelte-icons/fa/FaPhone.svelte'
+  import FaCheckCircle from 'svelte-icons/fa/FaCheckCircle.svelte'
   
   import UnmuteConfigurator from '$lib/components/UnmuteConfigurator.svelte';
   import { DEFAULT_UNMUTE_CONFIG, type UnmuteConfig } from '$lib/config';
@@ -174,14 +175,18 @@
     
     // Now, start the report generation in the background. The page is already
     // listening for the result via the reportStore.
-    await generateReport(chatHistory);
+    await generateReport(chatHistory, isReportReady);
   };
-
-  $: analyserNode = $processorStore?.inputAnalyser;
 
   $: callDuration = callStartTime 
     ? Math.round((($now.getTime() - callStartTime.getTime()) / 1000)) 
     : 0;
+  
+  $: isReportReady = callDuration >= 60;
+
+  $: reportTooltip = isReportReady
+    ? 'Ready to generate a report'
+    : 'Report not ready yet. Try to chat a bit more.';
   
   $: {
     if (connectingAudio) { // Wait for the audio element to be bound
@@ -338,10 +343,24 @@
         <ScreenWakeLock />  
       {/if}
     {:else}
-      <button class="controlButton endCallButton" on:click={handleStopCall}>
-        <FaPhoneSlash />
-      </button>
+      <div class="endCallContainer">
+        <button class="controlButton endCallButton" on:click={handleStopCall}>
+          <FaPhoneSlash />
+        </button>
+        <div
+          class="reportIndicator"
+          class:ready={isReportReady}
+          class:not-ready={!isReportReady}
+          title={reportTooltip}
+          aria-label={reportTooltip}
+          role="img"
+        >
+          <FaCheckCircle />
+          <div class="reportTooltip">{reportTooltip}</div>
+        </div>
+      </div>
     {/if}
+
 
     {#if $microphoneAccessStatus === 'denied'}
       <p class="error-text">Microphone access denied. Please enable it in your browser settings.</p>
@@ -557,6 +576,60 @@
     padding: 5px;
     opacity: 0.8;
     transition: opacity 0.2s ease;
+  }
+
+  .endCallContainer {
+    display: flex;
+  }
+
+  .reportIndicator {
+    position: relative;
+    margin-left: 12px;
+    margin-top: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
+  }
+
+  .reportIndicator .reportTooltip {
+    position: absolute;
+    bottom: 140%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+
+  .reportIndicator .reportTooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px;
+    border-style: solid;
+    border-color: rgba(0,0,0,0.85) transparent transparent transparent;
+  }
+
+  .reportIndicator.ready {
+    color: #34c759; 
+  }
+
+  .reportIndicator.not-ready {
+    opacity: .5;
+  }
+
+  .reportIndicator:hover .reportTooltip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-2px);
   }
 
   @keyframes spin {
