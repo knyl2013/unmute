@@ -39,6 +39,7 @@
   let webSocketUrl: string | null = null;
   let connectingAudio: HTMLAudioElement;
   let podId: string | null = null;
+  let silentAudioElement: HTMLAudioElement;
   // let chatHistory: ChatMessage[] = [];
   // Dummy chat history for demonstration
   let chatHistory: ChatMessage[] = [
@@ -148,6 +149,9 @@
     
     // 2. If we get permission, set up audio processing
     if (mediaStream) {
+      if (silentAudioElement) {
+        silentAudioElement.play().catch(e => console.error("Silent audio play failed", e));
+      }
       readyState = 'CONNECTING';
       audioProcessorMain = await setupAudio(mediaStream);
       isOngoing = true;
@@ -168,6 +172,11 @@
     shutdownAudio();
     callStartTime = null;
     readyState = 'CLOSED';
+
+    if (silentAudioElement) {
+      silentAudioElement.pause();
+      silentAudioElement.currentTime = 0;
+    }
 
     // Navigate to the special 'latest' route immediately.
     // The report page will show the 'generating' state from the store.
@@ -367,6 +376,7 @@
     {/if}
   </footer>
   <audio src="/connecting.wav" bind:this={connectingAudio} loop></audio>
+  <audio src="/silent.wav" bind:this={silentAudioElement} loop style="display: none;"></audio>
 </div>
 
 <!-- The styles are scoped to this component by default. No special setup needed. -->
