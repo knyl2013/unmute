@@ -284,7 +284,7 @@
       session: {
         instructions: unmuteConfig.instructions,
         voice: unmuteConfig.voice,
-        allow_recording: true,
+        allow_recording: false,
       },
     }));
   }
