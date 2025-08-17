@@ -630,10 +630,8 @@
 	}
 
 	.endCallContainer {
-		display: flex;
 		align-items: center;
-		gap: 12px;
-		padding: 0 16px;
+    padding: 0 16px;
 		box-sizing: border-box;
 	}
 
