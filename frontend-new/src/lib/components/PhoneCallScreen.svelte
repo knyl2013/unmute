@@ -637,18 +637,11 @@
 		box-sizing: border-box;
 	}
 
-	.endCallContainer .spacer {
-		width: calc(50% - 15vw);
-	}
-
 	.endCallContainer .endCallButton {
 		justify-self: start;
 	}
 
 	.reportIndicator {
-		grid-column: 2 / 3;
-		justify-self: center;
-		position: relative;
 		height: 20px;
 		margin-left: 0;
 		margin-top: 0;
