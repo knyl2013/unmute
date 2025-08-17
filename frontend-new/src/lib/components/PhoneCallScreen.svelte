@@ -629,8 +629,7 @@
 
 	.reportIndicator {
 		height: 20px;
-		margin-left: 0;
-		margin-top: 0;
+    width: 20px;
 	}
 
 	.reportIndicator .reportTooltip {
