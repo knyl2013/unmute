@@ -18,6 +18,12 @@ export const now = readable(new Date(), (set) => {
   };
 });
 
+export interface SpecificSuggestion {
+  original: string;
+  suggestion: string;
+  explanation: string;
+}
+
 export interface ReportData {
   date: Date;
   overallScore: number;
@@ -29,6 +35,8 @@ export interface ReportData {
     pronunciation: { score: number; feedback: string };
   };
   suggestionsForImprovement: string[];
+  specificSuggestions?: SpecificSuggestion[];
+  conversationSummary: string;
 }
 
 interface ReportState {

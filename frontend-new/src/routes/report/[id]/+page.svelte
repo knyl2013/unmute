@@ -93,8 +93,7 @@
         </svg>
       </button>
       <div class="callerInfo">
-        <h1>Your IELTS Report</h1>
-        <p>A detailed breakdown of your performance</p>
+        <p>Your IELTS Report</p>
       </div>
       <button class="historyButton" on:click={() => goto('/history')} aria-label="View History">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -139,6 +138,30 @@
             </li>
           {/each}
         </ul>
+        {#if report.specificSuggestions && report.specificSuggestions.length > 0}
+          <h2 class="sectionTitle">Specific Suggestions</h2>
+          <div class="specificSuggestionsContainer">
+            {#each report.specificSuggestions as item}
+              <div class="specificSuggestionCard">
+                <div class="suggestionHeader">
+                  <div class="textBlock">
+                    <span class="label">What you said:</span>
+                    <p class="originalText">"{item.original}"</p>
+                  </div>
+                  <div class="arrow">→</div>
+                  <div class="textBlock">
+                    <span class="label">Could be better:</span>
+                    <p class="suggestionText">"{item.suggestion}"</p>
+                  </div>
+                </div>
+                <div class="explanation">
+                  <span class="lightbulb">💡</span>
+                  {item.explanation}
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
       </section>
     </main>
   {/if}
@@ -160,7 +183,7 @@
 
   /* Header (copied and adapted) */
   .header {
-    padding: 50px 20px 20px;
+    padding: 20px 20px 20px;
     text-align: center;
     position: relative;
     flex-shrink: 0; /* Prevents header from shrinking */
@@ -169,7 +192,7 @@
   .backButton {
     position: absolute;
     left: 15px;
-    top: 55px;
+    top: 20px;
     background: none;
     border: none;
     color: white;
@@ -398,7 +421,7 @@
   .historyButton {
     position: absolute;
     right: 15px;
-    top: 55px;
+    top: 20px;
     background: none;
     border: none;
     color: white;
@@ -410,5 +433,91 @@
 
   .historyButton:hover {
     opacity: 1;
+  }
+
+  .specificSuggestionsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .specificSuggestionCard {
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .suggestionHeader {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+  }
+
+  .textBlock {
+    flex: 1;
+  }
+
+  .label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #a0a0a5;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  .originalText, .suggestionText {
+    margin: 0;
+    padding: 10px;
+    border-radius: 6px;
+    font-family: 'Menlo', 'Courier New', monospace;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .originalText {
+    background-color: rgba(255, 59, 48, 0.15); /* Reddish tint */
+    color: #ffb8b3;
+  }
+
+  .suggestionText {
+    background-color: rgba(52, 199, 89, 0.15); /* Greenish tint */
+    color: #b3e6c3;
+  }
+
+  .arrow {
+    font-size: 2rem;
+    color: #a0a0a5;
+  }
+
+  .explanation {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: #c7c7cc;
+    line-height: 1.6;
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 3px solid #f2f2f7;
+  }
+
+  .lightbulb {
+    font-size: 1.1rem;
+    line-height: 1.6;
+  }
+
+  @media (max-width: 600px) {
+    .suggestionHeader {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .arrow {
+      text-align: center;
+      transform: rotate(90deg);
+    }
   }
 </style>

@@ -45,6 +45,13 @@ export const POST: RequestHandler = async ({ request }) => {
           "<string: Actionable suggestion 1>",
           "<string: Actionable suggestion 2>"
         ],
+        "specificSuggestions": [
+          {
+            "original": "<string: The user's exact phrase from the transcript that needs improvement. Example: 'I went to school using bus.'>",
+            "suggestion": "<string: The corrected or improved version of the phrase. Example: 'I went to school by bus.'>",
+            "explanation": "<string: A brief, clear reason for the change. Example: 'Use the preposition \\'by\\' when referring to a mode of transport.'>"
+          }
+        ],
         "conversationSummary": "<string: Short summary for the conversation"
       }
     `;
