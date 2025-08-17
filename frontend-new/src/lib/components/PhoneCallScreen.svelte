@@ -1,680 +1,719 @@
 <!-- src/lib/components/PhoneCallScreen.svelte -->
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { ScreenWakeLock } from "svelte-screen-wake-lock";
-  import FaPhoneSlash from 'svelte-icons/fa/FaPhoneSlash.svelte'
-  import FaPhone from 'svelte-icons/fa/FaPhone.svelte'
-  import FaCheckCircle from 'svelte-icons/fa/FaCheckCircle.svelte'
-  
-  import UnmuteConfigurator from '$lib/components/UnmuteConfigurator.svelte';
-  import { DEFAULT_UNMUTE_CONFIG, type UnmuteConfig } from '$lib/config';
+	import { onMount } from 'svelte';
+	import { ScreenWakeLock } from 'svelte-screen-wake-lock';
+	import FaPhoneSlash from 'svelte-icons/fa/FaPhoneSlash.svelte';
+	import FaPhone from 'svelte-icons/fa/FaPhone.svelte';
+	import FaCheckCircle from 'svelte-icons/fa/FaCheckCircle.svelte';
 
-  // These are plain TS/JS files you'll create in `src/lib`
-  import { useMicrophoneAccess } from '$lib/useMicrophoneAccess';
-  import { useAudioProcessor, type AudioProcessor } from '$lib/useAudioProcessor';
-  import { base64DecodeOpus, base64EncodeOpus } from '$lib/audioUtil';
-  import type { ChatMessage } from '$lib/chatHistory';
+	import UnmuteConfigurator from '$lib/components/UnmuteConfigurator.svelte';
+	import { DEFAULT_UNMUTE_CONFIG, type UnmuteConfig } from '$lib/config';
 
-  import { generateReport, now } from '$lib/stores';
+	// These are plain TS/JS files you'll create in `src/lib`
+	import { useMicrophoneAccess } from '$lib/useMicrophoneAccess';
+	import { useAudioProcessor, type AudioProcessor } from '$lib/useAudioProcessor';
+	import { base64DecodeOpus, base64EncodeOpus } from '$lib/audioUtil';
+	import type { ChatMessage } from '$lib/chatHistory';
+
+	import { generateReport, now } from '$lib/stores';
 	import { goto } from '$app/navigation';
 
-  export let name: string = 'IELTS Examiner';
-  export let description: string = 'Estimate your IELTS speaking score by chatting to AI';
-  export let imageUrl: string = '/ielts-examiner.png';
-  
-  let isOngoing: boolean = false;
-  let callDuration: number = 0;
-  
-  let unmuteConfig: UnmuteConfig = DEFAULT_UNMUTE_CONFIG;
-  let callStartTime: Date | null = null;
-  let shouldConnect = false; // This is our main trigger for the connection
-  let ws: WebSocket | null = null;
-  let readyState: 'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED' | 'FAILED' = 'CLOSED';
-  let conversationState: 'bot_speaking' | 'user_speaking' | 'waiting_for_user' = 'waiting_for_user'
-  let isReady = false;
-  let setupAudio: (mediaStream: MediaStream) => Promise<AudioProcessor | undefined>;
-  let shutdownAudio: () => void;
-  let processorStore: Writable<AudioProcessor | null>;
-  let audioProcessorMain: AudioProcessor | undefined;
-  let webSocketUrl: string | null = null;
-  let connectingAudio: HTMLAudioElement;
-  let podId: string | null = null;
-  // let chatHistory: ChatMessage[] = [];
-  // Dummy chat history for demonstration
-  let chatHistory: ChatMessage[] = [
-    { role: 'assistant', content: 'Hello! To start, could you tell me about your hometown?' },
-    { role: 'user', content: 'Uh, yes. My hometown is a place... is very beautiful. It has many parks and the people is friendly.' },
-    { role: 'assistant', content: 'That sounds lovely. What kind of things can a visitor do there?' },
-    { role: 'user', content: 'A visitor can go to the central park. Also, he can visiting the museum, which has many old things. I think it is a good experience for everyone.' }
-  ];
-  let status: 'online' | 'offline' = 'offline';
+	export let name: string = 'IELTS Examiner';
+	export let description: string = 'Estimate your IELTS speaking score by chatting to AI';
+	export let imageUrl: string = '/ielts-examiner.png';
 
-  const checkHealth = async() => {
-    try {
-      const response = await fetch('/api/healthcheck', 
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ podId: podId })
-      });
-      const json = await response.json();
-      if (response.ok) {
-        status = json.status;
-      } else {
-        status = 'offline';
-      }
-    } catch (error) {
-      console.error("Health check request failed:", error);
-      status = 'offline';
-    }
-  }
+	let isOngoing: boolean = false;
+	let callDuration: number = 0;
 
-  async function notifyBackend(action: 'register' | 'unregister') {
-    try {
-      // The 'keepalive' flag is CRITICAL for 'unregister'. It ensures the
-      // request is sent even if the page is being closed.
-      await fetch('/api/pod-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action }),
-        keepalive: action === 'unregister',
-      }).then(async res => {
-        const result = await res.json();
-        if (result.webSocketUrl) {
-          webSocketUrl = result.webSocketUrl;
-        }
-        if (result.podId) {
-          podId = result.podId;
-        }
-      });
-    } catch (e) {
-      console.error(`Failed to ${action} connection:`, e);
-    }
-  }
+	let unmuteConfig: UnmuteConfig = DEFAULT_UNMUTE_CONFIG;
+	let callStartTime: Date | null = null;
+	let shouldConnect = false; // This is our main trigger for the connection
+	let ws: WebSocket | null = null;
+	let readyState: 'CONNECTING' | 'OPEN' | 'CLOSING' | 'CLOSED' | 'FAILED' = 'CLOSED';
+	let conversationState: 'bot_speaking' | 'user_speaking' | 'waiting_for_user' = 'waiting_for_user';
+	let isReady = false;
+	let setupAudio: (mediaStream: MediaStream) => Promise<AudioProcessor | undefined>;
+	let shutdownAudio: () => void;
+	let processorStore: Writable<AudioProcessor | null>;
+	let audioProcessorMain: AudioProcessor | undefined;
+	let webSocketUrl: string | null = null;
+	let connectingAudio: HTMLAudioElement;
+	let podId: string | null = null;
+	// let chatHistory: ChatMessage[] = [];
+	// Dummy chat history for demonstration
+	let chatHistory: ChatMessage[] = [
+		{ role: 'assistant', content: 'Hello! To start, could you tell me about your hometown?' },
+		{
+			role: 'user',
+			content:
+				'Uh, yes. My hometown is a place... is very beautiful. It has many parks and the people is friendly.'
+		},
+		{
+			role: 'assistant',
+			content: 'That sounds lovely. What kind of things can a visitor do there?'
+		},
+		{
+			role: 'user',
+			content:
+				'A visitor can go to the central park. Also, he can visiting the museum, which has many old things. I think it is a good experience for everyone.'
+		}
+	];
+	let status: 'online' | 'offline' = 'offline';
 
-  onMount(() => {
-    const audioProcessor = useAudioProcessor(onOpusRecorded);
-    
-    setupAudio = audioProcessor.setupAudio;
-    shutdownAudio = audioProcessor.shutdownAudio;
-    processorStore = audioProcessor.processorStore;
+	const checkHealth = async () => {
+		try {
+			const response = await fetch('/api/healthcheck', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ podId: podId })
+			});
+			const json = await response.json();
+			if (response.ok) {
+				status = json.status;
+			} else {
+				status = 'offline';
+			}
+		} catch (error) {
+			console.error('Health check request failed:', error);
+			status = 'offline';
+		}
+	};
 
-    isReady = true;
+	async function notifyBackend(action: 'register' | 'unregister') {
+		try {
+			// The 'keepalive' flag is CRITICAL for 'unregister'. It ensures the
+			// request is sent even if the page is being closed.
+			await fetch('/api/pod-session', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ action }),
+				keepalive: action === 'unregister'
+			}).then(async (res) => {
+				const result = await res.json();
+				if (result.webSocketUrl) {
+					webSocketUrl = result.webSocketUrl;
+				}
+				if (result.podId) {
+					podId = result.podId;
+				}
+			});
+		} catch (e) {
+			console.error(`Failed to ${action} connection:`, e);
+		}
+	}
 
-    checkHealth();
-    const intervalId = setInterval(checkHealth, 2000);
+	onMount(() => {
+		const audioProcessor = useAudioProcessor(onOpusRecorded);
 
-    notifyBackend('register');
+		setupAudio = audioProcessor.setupAudio;
+		shutdownAudio = audioProcessor.shutdownAudio;
+		processorStore = audioProcessor.processorStore;
 
-    return () => {
-      if (shutdownAudio) shutdownAudio();
-      if (intervalId) clearInterval(intervalId);
-      notifyBackend('unregister');
-    };
-  });
+		isReady = true;
 
-  // These functions are imported from the files you will create below.
-  const { askMicrophoneAccess, microphoneAccessStatus } = useMicrophoneAccess();
+		checkHealth();
+		const intervalId = setInterval(checkHealth, 2000);
 
-  const formatTime = (totalSeconds: number) => {
-    const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-    const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-    return `${minutes}:${seconds}`;
-  };
+		notifyBackend('register');
 
-  function onOpusRecorded(opus: Uint8Array) {
-    console.log(`[PhoneCallScreen] onOpusRecorded called. readyState: ${readyState}, opus size: ${opus.length}`);
-    console.log(ws);
-    if (ws && readyState === 'OPEN') {
-      ws.send(JSON.stringify({
-        type: "input_audio_buffer.append",
-        audio: base64EncodeOpus(opus),
-      }));
-    }
-  }
+		return () => {
+			if (shutdownAudio) shutdownAudio();
+			if (intervalId) clearInterval(intervalId);
+			notifyBackend('unregister');
+		};
+	});
 
-  const handleStartCall = async () => {
-    if (status !== 'online') {
-        alert("We are still bringing up the server. This could take 3-4 minutes. Thank you for your patience");
-        console.warn("Server is not ready yet.");
-        return;
-    }
-    if (!isReady || !setupAudio) {
-        console.warn("Audio processor is not ready yet.");
-        return; 
-    }
-    // 1. Ask for microphone permission
-    const mediaStream = await askMicrophoneAccess();
-    
-    // 2. If we get permission, set up audio processing
-    if (mediaStream) {
-      requestWakeLock();
-      readyState = 'CONNECTING';
-      audioProcessorMain = await setupAudio(mediaStream);
-      isOngoing = true;
-      callDuration = 0;
-      // 3. Set our trigger to true. The reactive block below will handle the connection.
-      shouldConnect = true; 
-      callStartTime = new Date();
-    } else {
-      // Handle the case where the user denies permission
-      console.error("Microphone access was denied.");
-      alert("You must allow microphone access to start the call.");
-    }
-  };
+	// These functions are imported from the files you will create below.
+	const { askMicrophoneAccess, microphoneAccessStatus } = useMicrophoneAccess();
 
-  const handleStopCall = async () => {
-    isOngoing = false;
-    shouldConnect = false;
-    shutdownAudio();
-    callStartTime = null;
-    readyState = 'CLOSED';
+	const formatTime = (totalSeconds: number) => {
+		const minutes = Math.floor(totalSeconds / 60)
+			.toString()
+			.padStart(2, '0');
+		const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+		return `${minutes}:${seconds}`;
+	};
 
-    // Navigate to the special 'latest' route immediately.
-    // The report page will show the 'generating' state from the store.
-    goto('/report/latest'); 
-    
-    // Now, start the report generation in the background. The page is already
-    // listening for the result via the reportStore.
-    await generateReport(chatHistory, isReportReady);
-  };
+	function onOpusRecorded(opus: Uint8Array) {
+		console.log(
+			`[PhoneCallScreen] onOpusRecorded called. readyState: ${readyState}, opus size: ${opus.length}`
+		);
+		console.log(ws);
+		if (ws && readyState === 'OPEN') {
+			ws.send(
+				JSON.stringify({
+					type: 'input_audio_buffer.append',
+					audio: base64EncodeOpus(opus)
+				})
+			);
+		}
+	}
 
-  const requestWakeLock = async () => {
-    try {
-      const wakeLock = await navigator.wakeLock.request("screen");
-    } catch (err: any) {
-      // The wake lock request fails - usually system-related, such as low battery.
+	const handleStartCall = async () => {
+		if (status !== 'online') {
+			alert(
+				'We are still bringing up the server. This could take 3-4 minutes. Thank you for your patience'
+			);
+			console.warn('Server is not ready yet.');
+			return;
+		}
+		if (!isReady || !setupAudio) {
+			console.warn('Audio processor is not ready yet.');
+			return;
+		}
+		// 1. Ask for microphone permission
+		const mediaStream = await askMicrophoneAccess();
 
-      console.log(`${err.name}, ${err.message}`);
-    }
-  };
+		// 2. If we get permission, set up audio processing
+		if (mediaStream) {
+			requestWakeLock();
+			readyState = 'CONNECTING';
+			audioProcessorMain = await setupAudio(mediaStream);
+			isOngoing = true;
+			callDuration = 0;
+			// 3. Set our trigger to true. The reactive block below will handle the connection.
+			shouldConnect = true;
+			callStartTime = new Date();
+		} else {
+			// Handle the case where the user denies permission
+			console.error('Microphone access was denied.');
+			alert('You must allow microphone access to start the call.');
+		}
+	};
 
-  $: callDuration = callStartTime 
-    ? Math.round((($now.getTime() - callStartTime.getTime()) / 1000)) 
-    : 0;
-  
-  $: isReportReady = callDuration >= 60;
+	const handleStopCall = async () => {
+		isOngoing = false;
+		shouldConnect = false;
+		shutdownAudio();
+		callStartTime = null;
+		readyState = 'CLOSED';
 
-  $: reportTooltip = isReportReady
-    ? 'Ready to generate a report'
-    : 'Report not ready yet. Try to chat a bit more.';
-  
-  $: {
-    if (connectingAudio) { // Wait for the audio element to be bound
-        if (readyState === 'CONNECTING') {
-            // Play the sound. The .catch is good practice for browser audio policies.
-            connectingAudio.play().catch(e => console.error("Audio play failed", e));
-        } else {
-            // If the state is anything else, stop the sound and reset it.
-            connectingAudio.pause();
-            connectingAudio.currentTime = 0;
-        }
-      }
-  }
+		// Navigate to the special 'latest' route immediately.
+		// The report page will show the 'generating' state from the store.
+		goto('/report/latest');
 
-  $: {
-    if (shouldConnect && !ws && webSocketUrl != null) {
-      console.log("Connecting to WebSocket...");
-      readyState = 'CONNECTING';
-      const newWs = new WebSocket(webSocketUrl, ["realtime"]);
+		// Now, start the report generation in the background. The page is already
+		// listening for the result via the reportStore.
+		await generateReport(chatHistory, isReportReady);
+	};
 
-      newWs.onopen = () => {
-        console.log("WebSocket connected!");
-        readyState = 'OPEN';
-        // Send initial configuration message once connected
-        console.log("WebSocket connected! Sending config:", unmuteConfig);
-        newWs.send(JSON.stringify({
-          type: "session.update",
-          session: {
-            instructions: {"type":"unmute_explanation"},
-            voice: "unmute-prod-website/ex04_narration_longform_00001.wav",
-            allow_recording: true,
-          },
-        }));
-      };
+	const requestWakeLock = async () => {
+		try {
+			const wakeLock = await navigator.wakeLock.request('screen');
+		} catch (err: any) {
+			// The wake lock request fails - usually system-related, such as low battery.
 
-      newWs.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        if (message.type === 'response.audio.delta') {
-          if (message.delta) {
-            const opus = base64DecodeOpus(message.delta);
-            const ap = audioProcessorMain;
-            console.log(ap);
-            if (!ap) return;
+			console.log(`${err.name}, ${err.message}`);
+		}
+	};
 
-            ap.decoder.postMessage(
-              {
-                command: "decode",
-                pages: opus,
-              },
-              [opus.buffer]
-            );
-          } else {
-            console.log('Received response.audio.delta but message.delta is undefined or null');
-          }
-        } else if (message.type === 'unmute.additional_outputs') {
-          console.log('Received metadata message:', message);
-          conversationState = message.args.debug_dict.conversation_state;
-          chatHistory = message.args.chat_history;
-        } else {
-          console.log('Received unknown message:', message);
-        }
-      };
+	$: callDuration = callStartTime
+		? Math.round(($now.getTime() - callStartTime.getTime()) / 1000)
+		: 0;
 
-      newWs.onclose = () => {
-        console.log("WebSocket disconnected.");
-        ws = null;
-        // If the connection closes unexpectedly, update the UI state
-        if (isOngoing) {
-          handleStopCall();
-        }
-      };
-      
-      newWs.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        readyState = 'FAILED'; // Indicate failure to connect
-        ws = null;
-        if(isOngoing) {
-          handleStopCall();
-        }
-      };
+	$: isReportReady = callDuration >= 60;
 
-      ws = newWs;
-    } else if (!shouldConnect && ws) {
-      console.log("Disconnecting WebSocket...");
-      ws.close();
-      ws = null;
-      readyState = 'CLOSED';
-    }
-  }
+	$: reportTooltip = isReportReady
+		? 'Ready to generate a report'
+		: 'Report not ready yet. Try to chat a bit more.';
 
-  $: if (unmuteConfig && isOngoing && ws && readyState === 'OPEN') {
-    console.log("Config changed mid-call. Sending update:", unmuteConfig);
-    ws.send(JSON.stringify({
-      type: "session.update",
-      session: {
-        instructions: unmuteConfig.instructions,
-        voice: unmuteConfig.voice,
-        allow_recording: false,
-      },
-    }));
-  }
+	$: {
+		if (connectingAudio) {
+			// Wait for the audio element to be bound
+			if (readyState === 'CONNECTING') {
+				// Play the sound. The .catch is good practice for browser audio policies.
+				connectingAudio.play().catch((e) => console.error('Audio play failed', e));
+			} else {
+				// If the state is anything else, stop the sound and reset it.
+				connectingAudio.pause();
+				connectingAudio.currentTime = 0;
+			}
+		}
+	}
+
+	$: {
+		if (shouldConnect && !ws && webSocketUrl != null) {
+			console.log('Connecting to WebSocket...');
+			readyState = 'CONNECTING';
+			const newWs = new WebSocket(webSocketUrl, ['realtime']);
+
+			newWs.onopen = () => {
+				console.log('WebSocket connected!');
+				readyState = 'OPEN';
+				// Send initial configuration message once connected
+				console.log('WebSocket connected! Sending config:', unmuteConfig);
+				newWs.send(
+					JSON.stringify({
+						type: 'session.update',
+						session: {
+							instructions: { type: 'unmute_explanation' },
+							voice: 'unmute-prod-website/ex04_narration_longform_00001.wav',
+							allow_recording: true
+						}
+					})
+				);
+			};
+
+			newWs.onmessage = (event) => {
+				const message = JSON.parse(event.data);
+				if (message.type === 'response.audio.delta') {
+					if (message.delta) {
+						const opus = base64DecodeOpus(message.delta);
+						const ap = audioProcessorMain;
+						console.log(ap);
+						if (!ap) return;
+
+						ap.decoder.postMessage(
+							{
+								command: 'decode',
+								pages: opus
+							},
+							[opus.buffer]
+						);
+					} else {
+						console.log('Received response.audio.delta but message.delta is undefined or null');
+					}
+				} else if (message.type === 'unmute.additional_outputs') {
+					console.log('Received metadata message:', message);
+					conversationState = message.args.debug_dict.conversation_state;
+					chatHistory = message.args.chat_history;
+				} else {
+					console.log('Received unknown message:', message);
+				}
+			};
+
+			newWs.onclose = () => {
+				console.log('WebSocket disconnected.');
+				ws = null;
+				// If the connection closes unexpectedly, update the UI state
+				if (isOngoing) {
+					handleStopCall();
+				}
+			};
+
+			newWs.onerror = (error) => {
+				console.error('WebSocket error:', error);
+				readyState = 'FAILED'; // Indicate failure to connect
+				ws = null;
+				if (isOngoing) {
+					handleStopCall();
+				}
+			};
+
+			ws = newWs;
+		} else if (!shouldConnect && ws) {
+			console.log('Disconnecting WebSocket...');
+			ws.close();
+			ws = null;
+			readyState = 'CLOSED';
+		}
+	}
+
+	$: if (unmuteConfig && isOngoing && ws && readyState === 'OPEN') {
+		console.log('Config changed mid-call. Sending update:', unmuteConfig);
+		ws.send(
+			JSON.stringify({
+				type: 'session.update',
+				session: {
+					instructions: unmuteConfig.instructions,
+					voice: unmuteConfig.voice,
+					allow_recording: false
+				}
+			})
+		);
+	}
 </script>
 
 <!-- The HTML markup is mostly unchanged -->
 <div class="callContainer">
-  <header class="header">
-    <div class="callerInfo">
-      <h1 class="name-container"><span class={`server-indicator ${status}`}></span> {name}</h1>
-      <h5 class="description-container"> {description} </h5>
-      <p style:opacity={readyState === 'CONNECTING' || readyState === 'OPEN' || readyState === 'FAILED' ? '1' : '0'}>
-        { 
-          readyState === 'CONNECTING' ? 'Connecting...' :  
-          readyState === 'OPEN' ? `${formatTime(callDuration)}` :
-          readyState === 'FAILED' ? 'Connection failed. Please try again.' : "PLACEHOLDER"
-        }
-      </p>
-    </div>
-    <button class="historyButton" on:click={() => goto('/history')} aria-label="View History">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M13 3C8.03 3 4 7.03 4 12H1L4.89 15.89L9 12H6C6 8.13 9.13 5 13 5C16.87 5 20 8.13 20 12C20 15.87 16.87 19 13 19C11.07 19 9.32 18.21 8.06 16.94L6.64 18.36C8.27 19.99 10.51 21 13 21C17.97 21 22 16.97 22 12C22 7.03 17.97 3 13 3ZM12 8V13L16.28 15.54L17 14.33L13.5 12.25V8H12Z" fill="white"/>
-      </svg>
-    </button>
-  </header>
+	<header class="header">
+		<div class="callerInfo">
+			<h1 class="name-container"><span class={`server-indicator ${status}`}></span> {name}</h1>
+			<h5 class="description-container">{description}</h5>
+			<p
+				style:opacity={readyState === 'CONNECTING' ||
+				readyState === 'OPEN' ||
+				readyState === 'FAILED'
+					? '1'
+					: '0'}
+			>
+				{readyState === 'CONNECTING'
+					? 'Connecting...'
+					: readyState === 'OPEN'
+						? `${formatTime(callDuration)}`
+						: readyState === 'FAILED'
+							? 'Connection failed. Please try again.'
+							: 'PLACEHOLDER'}
+			</p>
+		</div>
+		<button class="historyButton" on:click={() => goto('/history')} aria-label="View History">
+			<svg
+				width="28"
+				height="28"
+				viewBox="0 0 24 24"
+				fill="none"
+				xmlns="http://www.w3.org/2000/svg"
+			>
+				<path
+					d="M13 3C8.03 3 4 7.03 4 12H1L4.89 15.89L9 12H6C6 8.13 9.13 5 13 5C16.87 5 20 8.13 20 12C20 15.87 16.87 19 13 19C11.07 19 9.32 18.21 8.06 16.94L6.64 18.36C8.27 19.99 10.51 21 13 21C17.97 21 22 16.97 22 12C22 7.03 17.97 3 13 3ZM12 8V13L16.28 15.54L17 14.33L13.5 12.25V8H12Z"
+					fill="white"
+				/>
+			</svg>
+		</button>
+	</header>
 
-  <main class="mainContent">
-    <div class="profileImageContainer">
-      <img src={imageUrl} alt={name} class="profileImage" />
-    </div>
-    <div 
-      class="profileImageContainerSpinner"
-      class:shouldShow={conversationState === 'user_speaking'}
-    ></div>
-    <div 
-      class="profileImageContainerSpeakingBorder"
-      class:shouldShow={conversationState === 'bot_speaking'}
-    ></div>
-  </main>
+	<main class="mainContent">
+		<div class="profileImageContainer">
+			<img src={imageUrl} alt={name} class="profileImage" />
+		</div>
+		<div
+			class="profileImageContainerSpinner"
+			class:shouldShow={conversationState === 'user_speaking'}
+		></div>
+		<div
+			class="profileImageContainerSpeakingBorder"
+			class:shouldShow={conversationState === 'bot_speaking'}
+		></div>
+	</main>
 
-  <footer class="footerControls">
-    {#if !isOngoing && readyState !== "CONNECTING"}
-      <button 
-        class={`controlButton startCallButton ${status}`}
-        on:click={handleStartCall}
-      >
-        {#if status === 'online'}
-          <FaPhone />
-        {:else}
-          <div class="spinner"></div>
-        {/if}
-      </button>
-      {#if status !== 'online'}
-        <h5>We are still bringing up the server. This could take 3-4 minutes. Thank you for your patience.</h5>
-      {:else}
-        <ScreenWakeLock />  
-      {/if}
-    {:else}
-      <div class="endCallContainer">
-      <div class="spacer"></div>
-        <button class="controlButton endCallButton" on:click={handleStopCall}>
-          <FaPhoneSlash />
-        </button>
-        <div
-          class="reportIndicator"
-          class:ready={isReportReady}
-          class:not-ready={!isReportReady}
-          title={reportTooltip}
-          aria-label={reportTooltip}
-          role="img"
-        >
-          <FaCheckCircle />
-          <div class="reportTooltip">{reportTooltip}</div>
-        </div>
-        <div class="spacer"></div>
-      </div>
-    {/if}
+	<footer class="footerControls">
+		{#if !isOngoing && readyState !== 'CONNECTING' && false}
+			<button class={`controlButton startCallButton ${status}`} on:click={handleStartCall}>
+				{#if status === 'online'}
+					<FaPhone />
+				{:else}
+					<div class="spinner"></div>
+				{/if}
+			</button>
+			{#if status !== 'online'}
+				<h5>
+					We are still bringing up the server. This could take 3-4 minutes. Thank you for your
+					patience.
+				</h5>
+			{:else}
+				<ScreenWakeLock />
+			{/if}
+		{:else}
+			<div class="endCallContainer">
+				<button class="controlButton endCallButton" on:click={handleStopCall}>
+					<FaPhoneSlash />
+				</button>
+				<div
+					class="reportIndicator"
+					class:ready={isReportReady}
+					class:not-ready={!isReportReady}
+					title={reportTooltip}
+					aria-label={reportTooltip}
+					role="img"
+				>
+					<FaCheckCircle />
+					<div class="reportTooltip">{reportTooltip}</div>
+				</div>
+			</div>
+		{/if}
 
-
-    {#if $microphoneAccessStatus === 'denied'}
-      <p class="error-text">Microphone access denied. Please enable it in your browser settings.</p>
-    {/if}
-  </footer>
-  <audio src="/connecting.wav" bind:this={connectingAudio} loop></audio>
+		{#if $microphoneAccessStatus === 'denied'}
+			<p class="error-text">Microphone access denied. Please enable it in your browser settings.</p>
+		{/if}
+	</footer>
+	<audio src="/connecting.wav" bind:this={connectingAudio} loop></audio>
 </div>
 
 <!-- The styles are scoped to this component by default. No special setup needed. -->
 <style>
-  .error-text {
-    color: red;
-    position: absolute;
-    bottom: 20px;
-    width: 100%;
-    text-align: center;
-  }
+	.error-text {
+		color: red;
+		position: absolute;
+		bottom: 20px;
+		width: 100%;
+		text-align: center;
+	}
 
-  .callContainer {
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    color: white;
-    overflow: hidden; /* Ensure no scrollbars appear */
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: radial-gradient(circle at 50% 50%, #5a4743, #3a2723);
-  }
+	.callContainer {
+		position: fixed;
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		color: white;
+		overflow: hidden; /* Ensure no scrollbars appear */
+		font-family:
+			-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+		background: radial-gradient(circle at 50% 50%, #5a4743, #3a2723);
+	}
 
-  .header {
-    padding: 50px 20px 20px;
-    text-align: center;
-    position: relative;
-  }
+	.header {
+		padding: 50px 20px 20px;
+		text-align: center;
+		position: relative;
+	}
 
-  .backButton {
-    position: absolute;
-    left: 15px;
-    top: 55px;
-    background: none;
-    border: none;
-    color: white;
-    cursor: pointer;
-    padding: 5px;
-  }
+	.backButton {
+		position: absolute;
+		left: 15px;
+		top: 55px;
+		background: none;
+		border: none;
+		color: white;
+		cursor: pointer;
+		padding: 5px;
+	}
 
-  .callerInfo h1 {
-    margin: 0;
-    font-size: 2.2rem;
-    font-weight: 600;
-  }
+	.callerInfo h1 {
+		margin: 0;
+		font-size: 2.2rem;
+		font-weight: 600;
+	}
 
-  .callerInfo p {
-    margin: 5px 0 0;
-    font-size: 1rem;
-    color: #d1d1d6;
-    font-weight: 500;
-  }
+	.callerInfo p {
+		margin: 5px 0 0;
+		font-size: 1rem;
+		color: #d1d1d6;
+		font-weight: 500;
+	}
 
-  .mainContent {
-    flex-grow: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
+	.mainContent {
+		flex-grow: 1;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
 
-  .profileImageContainer {
-    width: 150px;
-    height: 150px;
-    border-radius: 50%;
-    overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  }
+	.profileImageContainer {
+		width: 150px;
+		height: 150px;
+		border-radius: 50%;
+		overflow: hidden;
+		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+	}
 
-  .profileImage {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
+	.profileImage {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
 
-  .footerControls {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    padding: 0 20px 50px 20px;
-    flex-direction: column;
-  }
+	.footerControls {
+		display: flex;
+		justify-content: space-around;
+		align-items: center;
+		padding: 0 20px 50px 20px;
+		flex-direction: column;
+	}
 
-  .controlButton {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.2);
-    border: none;
-    color: white;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-  }
+	.controlButton {
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		background-color: rgba(255, 255, 255, 0.2);
+		border: none;
+		color: white;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		cursor: pointer;
+		transition: background-color 0.2s ease;
+	}
 
-  .controlButton:active {
-    background-color: rgba(255, 255, 255, 0.4);
-  }
+	.controlButton:active {
+		background-color: rgba(255, 255, 255, 0.4);
+	}
 
-  .controlButton:hover {
-    background-color: rgba(255, 255, 255, 0.3);
-  }
+	.controlButton:hover {
+		background-color: rgba(255, 255, 255, 0.3);
+	}
 
-  .endCallButton {
-    background-color: #ff3b30;
-  }
+	.endCallButton {
+		background-color: #ff3b30;
+	}
 
-  .endCallButton:active {
-    background-color: #d93229;
-  }
+	.endCallButton:active {
+		background-color: #d93229;
+	}
 
-  .endCallButton:hover {
-    background-color: #ff5c5c;
-  }
+	.endCallButton:hover {
+		background-color: #ff5c5c;
+	}
 
-  .startCallButton {
-    background-color: #34c759;
-  }
+	.startCallButton {
+		background-color: #34c759;
+	}
 
-  .startCallButton.offline {
-    background-color: #5a4743;
-  }
+	.startCallButton.offline {
+		background-color: #5a4743;
+	}
 
-  .startCallButton:active {
-    background-color: #28a745;
-  }
+	.startCallButton:active {
+		background-color: #28a745;
+	}
 
-  .startCallButton:hover {
-    background-color: #45d160;
-  }
+	.startCallButton:hover {
+		background-color: #45d160;
+	}
 
-  .server-indicator.online {
-    background-color: #4CAF50;
-  }
+	.server-indicator.online {
+		background-color: #4caf50;
+	}
 
-  .server-indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    border: 1px solid white;
-    margin-top: 2vh;
-    margin-right: 12px;
-  }
+	.server-indicator {
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		border: 1px solid white;
+		margin-top: 2vh;
+		margin-right: 12px;
+	}
 
-  .name-container {
-    display: flex;
-    padding-left: calc(50% - 145px);
-  }
+	.name-container {
+		display: flex;
+		padding-left: calc(50% - 145px);
+	}
 
-  .description-container {
-    font-style: italic;
-  }
+	.description-container {
+		font-style: italic;
+	}
 
-  .spinner {
-    width: 24px;  /* Make it slightly smaller than the button */
-    height: 24px;
-    border: 3px solid rgba(255, 255, 255, 0.3);
-    border-top-color: #fff; /* This creates the "pac-man" effect */
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
+	.spinner {
+		width: 24px; /* Make it slightly smaller than the button */
+		height: 24px;
+		border: 3px solid rgba(255, 255, 255, 0.3);
+		border-top-color: #fff; /* This creates the "pac-man" effect */
+		border-radius: 50%;
+		animation: spin 1s linear infinite;
+	}
 
-  .break {
-    flex-basis: 100%;
-    width: 0;
-  }
+	.break {
+		flex-basis: 100%;
+		width: 0;
+	}
 
-  .profileImageContainerSpinner.shouldShow {
-    display: block;
-  }
-  .profileImageContainerSpinner {
-    display: none;
-    position: fixed;
-    width: 170px;
-    height: 170px;
-    border-radius: 50%;
-    border-radius: 50%;
-    border: 3px dashed #34c759;
-    animation: spin 5s linear infinite;
-  }
+	.profileImageContainerSpinner.shouldShow {
+		display: block;
+	}
+	.profileImageContainerSpinner {
+		display: none;
+		position: fixed;
+		width: 170px;
+		height: 170px;
+		border-radius: 50%;
+		border-radius: 50%;
+		border: 3px dashed #34c759;
+		animation: spin 5s linear infinite;
+	}
 
-  .profileImageContainerSpeakingBorder.shouldShow {
-    display: block;
-  }
-  .profileImageContainerSpeakingBorder {
-    display: none;
-    position: fixed;
-    width: 170px;
-    height: 170px;
-    border-radius: 50%;
-    border-radius: 50%;
-    border: 1px solid lightgrey;
-    animation: pulse 1s infinite;
-  }
-  
-  .historyButton {
-    position: absolute;
-    right: 15px;
-    top: 55px;
-    background: none;
-    border: none;
-    color: white;
-    cursor: pointer;
-    padding: 5px;
-    opacity: 0.8;
-    transition: opacity 0.2s ease;
-  }
+	.profileImageContainerSpeakingBorder.shouldShow {
+		display: block;
+	}
+	.profileImageContainerSpeakingBorder {
+		display: none;
+		position: fixed;
+		width: 170px;
+		height: 170px;
+		border-radius: 50%;
+		border-radius: 50%;
+		border: 1px solid lightgrey;
+		animation: pulse 1s infinite;
+	}
 
-  .endCallContainer {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    padding: 0 16px;
-    box-sizing: border-box;
-  }
+	.historyButton {
+		position: absolute;
+		right: 15px;
+		top: 55px;
+		background: none;
+		border: none;
+		color: white;
+		cursor: pointer;
+		padding: 5px;
+		opacity: 0.8;
+		transition: opacity 0.2s ease;
+	}
 
-  .endCallContainer .spacer {
-    width: calc(50% - 50px)
-  }
+	.endCallContainer {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 0 16px;
+		box-sizing: border-box;
+	}
 
-  .endCallContainer .endCallButton {
-    justify-self: start;
-  }
+	.endCallContainer .spacer {
+		width: calc(50% - 15vw);
+	}
 
-  .reportIndicator {
-    grid-column: 2 / 3;
-    justify-self: center;
-    position: relative;
-    height: 20px;
-    margin-left: 0;
-    margin-top: 0;
-  }
+	.endCallContainer .endCallButton {
+		justify-self: start;
+	}
 
-  .reportIndicator .reportTooltip {
-    position: absolute;
-    bottom: 140%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,0.85);
-    color: #fff;
-    padding: 6px 8px;
-    border-radius: 6px;
-    font-size: 12px;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.15s ease, transform 0.15s ease;
-  }
+	.reportIndicator {
+		grid-column: 2 / 3;
+		justify-self: center;
+		position: relative;
+		height: 20px;
+		margin-left: 0;
+		margin-top: 0;
+	}
 
-  .reportIndicator .reportTooltip::after {
-    content: '';
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border-width: 6px;
-    border-style: solid;
-    border-color: rgba(0,0,0,0.85) transparent transparent transparent;
-  }
+	.reportIndicator .reportTooltip {
+		position: absolute;
+		bottom: 140%;
+		left: 50%;
+		transform: translateX(-50%);
+		background: rgba(0, 0, 0, 0.85);
+		color: #fff;
+		padding: 6px 8px;
+		border-radius: 6px;
+		font-size: 12px;
+		white-space: nowrap;
+		opacity: 0;
+		pointer-events: none;
+		transition:
+			opacity 0.15s ease,
+			transform 0.15s ease;
+	}
 
-  .reportIndicator.ready {
-    color: #34c759; 
-  }
+	.reportIndicator .reportTooltip::after {
+		content: '';
+		position: absolute;
+		top: 100%;
+		left: 50%;
+		transform: translateX(-50%);
+		border-width: 6px;
+		border-style: solid;
+		border-color: rgba(0, 0, 0, 0.85) transparent transparent transparent;
+	}
 
-  .reportIndicator.not-ready {
-    opacity: .5;
-  }
+	.reportIndicator.ready {
+		color: #34c759;
+	}
 
-  .reportIndicator:hover .reportTooltip {
-    opacity: 1;
-    transform: translateX(-50%) translateY(-2px);
-  }
+	.reportIndicator.not-ready {
+		opacity: 0.5;
+	}
 
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
+	.reportIndicator:hover .reportTooltip {
+		opacity: 1;
+		transform: translateX(-50%) translateY(-2px);
+	}
 
-  @keyframes pulse {
-    0% {
-      transform: scale(1);
-      opacity: 1;
-    }
-    50% {
-      transform: scale(1.1);
-      opacity: 0;
-    }
-    100% {
-      transform: scale(1);
-      opacity: 1;
-    }
-  }
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	@keyframes pulse {
+		0% {
+			transform: scale(1);
+			opacity: 1;
+		}
+		50% {
+			transform: scale(1.1);
+			opacity: 0;
+		}
+		100% {
+			transform: scale(1);
+			opacity: 1;
+		}
+	}
 </style>
