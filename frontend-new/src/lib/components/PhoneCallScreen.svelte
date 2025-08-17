@@ -592,13 +592,15 @@
   .endCallContainer {
     display: flex;
     justify-content: center;
+    align-items: center;
     gap: 12px;
   }
 
   .reportIndicator {
     position: relative;
-    margin-top: 12px;
     height: 20px;
+    display: flex;
+    align-items: center;
   }
 
   .reportIndicator .reportTooltip {
