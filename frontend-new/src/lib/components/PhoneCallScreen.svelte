@@ -630,13 +630,11 @@
 	}
 
 	.endCallContainer {
+    display: flex;
+    gap: 12px;
 		align-items: center;
     padding: 0 16px;
 		box-sizing: border-box;
-	}
-
-	.endCallContainer .endCallButton {
-		justify-self: start;
 	}
 
 	.reportIndicator {
