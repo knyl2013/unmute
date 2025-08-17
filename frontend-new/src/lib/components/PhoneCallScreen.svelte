@@ -355,6 +355,7 @@
       {/if}
     {:else}
       <div class="endCallContainer">
+      <div class="spacer"></div>
         <button class="controlButton endCallButton" on:click={handleStopCall}>
           <FaPhoneSlash />
         </button>
@@ -369,6 +370,7 @@
           <FaCheckCircle />
           <div class="reportTooltip">{reportTooltip}</div>
         </div>
+        <div class="spacer"></div>
       </div>
     {/if}
 
@@ -591,16 +593,28 @@
 
   .endCallContainer {
     display: flex;
-    justify-content: center;
     align-items: center;
     gap: 12px;
+    width: 100%;
+    padding: 0 16px;
+    box-sizing: border-box;
+  }
+
+  .endCallContainer .spacer {
+    width: calc(50% - 50px)
+  }
+
+  .endCallContainer .endCallButton {
+    justify-self: start;
   }
 
   .reportIndicator {
+    grid-column: 2 / 3;
+    justify-self: center;
     position: relative;
     height: 20px;
-    display: flex;
-    align-items: center;
+    margin-left: 0;
+    margin-top: 0;
   }
 
   .reportIndicator .reportTooltip {
