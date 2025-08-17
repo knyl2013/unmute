@@ -394,22 +394,20 @@
 				<ScreenWakeLock />
 			{/if}
 		{:else}
-			<div class="endCallContainer">
-				<button class="controlButton endCallButton" on:click={handleStopCall}>
-					<FaPhoneSlash />
-				</button>
-				<div
-					class="reportIndicator"
-					class:ready={isReportReady}
-					class:not-ready={!isReportReady}
-					title={reportTooltip}
-					aria-label={reportTooltip}
-					role="img"
-				>
-					<FaCheckCircle />
-					<div class="reportTooltip">{reportTooltip}</div>
-				</div>
-			</div>
+      <button class="controlButton endCallButton" on:click={handleStopCall}>
+        <FaPhoneSlash />
+      </button>
+      <div
+        class="reportIndicator"
+        class:ready={isReportReady}
+        class:not-ready={!isReportReady}
+        title={reportTooltip}
+        aria-label={reportTooltip}
+        role="img"
+      >
+        <FaCheckCircle />
+        <div class="reportTooltip">{reportTooltip}</div>
+      </div>
 		{/if}
 
 		{#if $microphoneAccessStatus === 'denied'}
@@ -496,10 +494,10 @@
 
 	.footerControls {
 		display: flex;
-		justify-content: space-around;
+		justify-content: center;
 		align-items: center;
 		padding: 0 20px 50px 20px;
-		flex-direction: column;
+    gap: 12px;
 	}
 
 	.controlButton {
@@ -627,14 +625,6 @@
 		padding: 5px;
 		opacity: 0.8;
 		transition: opacity 0.2s ease;
-	}
-
-	.endCallContainer {
-    display: flex;
-    gap: 12px;
-		align-items: center;
-    padding: 0 16px;
-		box-sizing: border-box;
 	}
 
 	.reportIndicator {
