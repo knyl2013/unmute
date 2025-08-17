@@ -591,10 +591,12 @@
 
   .endCallContainer {
     display: flex;
+    justify-content: center;
+    gap: 12px;
   }
 
   .reportIndicator {
-    margin-left: 12px;
+    position: relative;
     margin-top: 12px;
     height: 20px;
   }
