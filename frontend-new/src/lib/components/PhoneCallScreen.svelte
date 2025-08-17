@@ -1,15 +1,11 @@
-<!-- src/lib/components/PhoneCallScreen.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { ScreenWakeLock } from 'svelte-screen-wake-lock';
 	import FaPhoneSlash from 'svelte-icons/fa/FaPhoneSlash.svelte';
 	import FaPhone from 'svelte-icons/fa/FaPhone.svelte';
 	import FaCheckCircle from 'svelte-icons/fa/FaCheckCircle.svelte';
 
-	import UnmuteConfigurator from '$lib/components/UnmuteConfigurator.svelte';
 	import { DEFAULT_UNMUTE_CONFIG, type UnmuteConfig } from '$lib/config';
 
-	// These are plain TS/JS files you'll create in `src/lib`
 	import { useMicrophoneAccess } from '$lib/useMicrophoneAccess';
 	import { useAudioProcessor, type AudioProcessor } from '$lib/useAudioProcessor';
 	import { base64DecodeOpus, base64EncodeOpus } from '$lib/audioUtil';
@@ -39,25 +35,7 @@
 	let webSocketUrl: string | null = null;
 	let connectingAudio: HTMLAudioElement;
 	let podId: string | null = null;
-	// let chatHistory: ChatMessage[] = [];
-	// Dummy chat history for demonstration
-	let chatHistory: ChatMessage[] = [
-		{ role: 'assistant', content: 'Hello! To start, could you tell me about your hometown?' },
-		{
-			role: 'user',
-			content:
-				'Uh, yes. My hometown is a place... is very beautiful. It has many parks and the people is friendly.'
-		},
-		{
-			role: 'assistant',
-			content: 'That sounds lovely. What kind of things can a visitor do there?'
-		},
-		{
-			role: 'user',
-			content:
-				'A visitor can go to the central park. Also, he can visiting the museum, which has many old things. I think it is a good experience for everyone.'
-		}
-	];
+	let chatHistory: ChatMessage[] = [];
 	let status: 'online' | 'offline' = 'offline';
 
 	const checkHealth = async () => {
@@ -123,7 +101,6 @@
 		};
 	});
 
-	// These functions are imported from the files you will create below.
 	const { askMicrophoneAccess, microphoneAccessStatus } = useMicrophoneAccess();
 
 	const formatTime = (totalSeconds: number) => {
@@ -202,7 +179,6 @@
 			const wakeLock = await navigator.wakeLock.request('screen');
 		} catch (err: any) {
 			// The wake lock request fails - usually system-related, such as low battery.
-
 			console.log(`${err.name}, ${err.message}`);
 		}
 	};
@@ -390,24 +366,22 @@
 					We are still bringing up the server. This could take 3-4 minutes. Thank you for your
 					patience.
 				</h5>
-			{:else}
-				<ScreenWakeLock />
 			{/if}
 		{:else}
-      <button class="controlButton endCallButton" on:click={handleStopCall}>
-        <FaPhoneSlash />
-      </button>
-      <div
-        class="reportIndicator"
-        class:ready={isReportReady}
-        class:not-ready={!isReportReady}
-        title={reportTooltip}
-        aria-label={reportTooltip}
-        role="img"
-      >
-        <FaCheckCircle />
-        <div class="reportTooltip">{reportTooltip}</div>
-      </div>
+			<button class="controlButton endCallButton" on:click={handleStopCall}>
+				<FaPhoneSlash />
+			</button>
+			<div
+				class="reportIndicator"
+				class:ready={isReportReady}
+				class:not-ready={!isReportReady}
+				title={reportTooltip}
+				aria-label={reportTooltip}
+				role="img"
+			>
+				<FaCheckCircle />
+				<div class="reportTooltip">{reportTooltip}</div>
+			</div>
 		{/if}
 
 		{#if $microphoneAccessStatus === 'denied'}
@@ -417,7 +391,6 @@
 	<audio src="/connecting.wav" bind:this={connectingAudio} loop></audio>
 </div>
 
-<!-- The styles are scoped to this component by default. No special setup needed. -->
 <style>
 	.error-text {
 		color: red;
@@ -573,7 +546,7 @@
 	}
 
 	.spinner {
-		width: 24px; /* Make it slightly smaller than the button */
+		width: 24px;
 		height: 24px;
 		border: 3px solid rgba(255, 255, 255, 0.3);
 		border-top-color: #fff; /* This creates the "pac-man" effect */
