@@ -58,14 +58,13 @@
     .auth-container {
         position: absolute;
         right: 15px;
-        top: 15px;
+        top: 13.5px;
     }
 
     .auth-button {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 8px 16px;
         border-radius: 20px;
         border: 1px solid rgba(255, 255, 255, 0.5);
         background: rgba(255, 255, 255, 0.1);
