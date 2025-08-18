@@ -593,7 +593,7 @@
 	.historyButton {
 		position: absolute;
 		right: 105px;
-		top: 15px;
+		top: 13px;
 		background: none;
 		border: none;
 		color: white;
@@ -605,7 +605,7 @@
 
 	.reportIndicator {
 		height: 20px;
-    width: 20px;
+   		width: 20px;
 	}
 
 	.reportIndicator .reportTooltip {
