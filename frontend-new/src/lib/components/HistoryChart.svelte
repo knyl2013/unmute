@@ -1,11 +1,7 @@
 <script lang="ts">
-    // Define the type for a single report entry
-    type ReportEntry = {
-        date: string;
-        overallScore: number;
-    };
+	import type { HistoryEntry } from "../../types/ChatHistory";
 
-    export let data: ReportEntry[] = [];
+    export let data: HistoryEntry[] = [];
 
     // The data comes sorted newest-to-oldest. For plotting left-to-right, we need oldest-to-newest.
     $: plotData = [...data].reverse();

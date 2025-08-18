@@ -1,6 +1,9 @@
-// src/lib/stores.ts
 import { readable, writable } from 'svelte/store';
 import type { ChatMessage } from './chatHistory';
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { auth, db } from '$lib/firebase';
+import { get } from 'svelte/store';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 /**
  * A readable Svelte store that updates with the current Date every second.
@@ -45,6 +48,13 @@ interface ReportState {
   error: string | null;
 }
 
+export const userStore = readable<User | null | undefined>(undefined, (set) => {
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    set(user);
+  });
+  return () => unsubscribe();
+});
+
 // Create the writable store with an initial state
 export const reportStore = writable<ReportState>({
   status: 'idle',
@@ -54,6 +64,8 @@ export const reportStore = writable<ReportState>({
 
 export const generateReport = async (chatHistory: ChatMessage[], isReportReady: boolean) => {
   reportStore.set({ status: 'generating', data: null, error: null });
+
+  const currentUser = get(userStore);
 
   try {
     if (!isReportReady) {
@@ -73,16 +85,21 @@ export const generateReport = async (chatHistory: ChatMessage[], isReportReady: 
 
     const reportData: ReportData = await response.json();
     
-    const reportHistory = JSON.parse(localStorage.getItem('reportHistory') || '[]') || [];
-    const newReportHistory = [...reportHistory, reportData];
-    localStorage.setItem('reportHistory', JSON.stringify(newReportHistory));
+    if (currentUser) {
+      await addDoc(collection(db, 'reports'), {
+        ...reportData,
+        userId: currentUser.uid,
+        date: new Date()
+      });
+    } else {
+      const reportHistory = JSON.parse(localStorage.getItem('reportHistory') || '[]') || [];
+      const newReportHistory = [...reportHistory, reportData];
+      localStorage.setItem('reportHistory', JSON.stringify(newReportHistory));
+    }
 
-    // 4. On success, update the store. The /report/latest page will reactively
     // update from 'generating' to show the full report.
     reportStore.set({ status: 'success', data: reportData, error: null });
-
   } catch (err: any) {
-    // 5. On failure, update the store. The /report/latest page will show the error.
     console.error("Report generation failed:", err);
     reportStore.set({ status: 'error', data: null, error: err.message });
   }

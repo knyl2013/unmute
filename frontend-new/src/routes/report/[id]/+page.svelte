@@ -1,17 +1,19 @@
 <script lang="ts">
-  import { reportStore, type ReportData } from '$lib/stores';
+  import { reportStore, userStore, type ReportData } from '$lib/stores';
   import { page } from '$app/stores'; // Import page store to get URL params
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
+	import { doc, getDoc, Timestamp } from 'firebase/firestore';
+	import { db } from '$lib/firebase';
 
   // Define types for clarity
   type ReportState = {
-    status: 'generating' | 'success' | 'error' | 'idle';
-    data?: ReportData;
-    error?: string;
+      status: 'loading' | 'generating' | 'success' | 'error' | 'idle'; // Added 'loading'
+      data?: ReportData;
+      error?: string;
   };
   
-  let currentReportState: ReportState;
+  let currentReportState: ReportState = { status: 'loading' };
   
   // Get the report ID (date) from the URL
   const reportId = $page.params.id;
@@ -30,37 +32,66 @@
   };
 
   onMount(() => {
-    // If the ID is 'latest', it means we are showing a newly generated report.
-    // We get this from the store.
-    if (reportId === 'latest') {
-      const unsubscribe = reportStore.subscribe(value => {
-        currentReportState = {
-            status: value.status,
-            data: value.data ?? undefined,
-            error: value.error ?? undefined
-        }
-      });
-      return unsubscribe;
-    } else {
-      // Otherwise, we are viewing a report from history. Load it from localStorage.
-      try {
-        const rawHistory = localStorage.getItem('reportHistory');
-        if (rawHistory) {
-          const history: ReportData[] = JSON.parse(rawHistory);
-          const foundReport = history.find(report => report.date.toString() === decodeURIComponent(reportId || ""));
-          
-          if (foundReport) {
-            currentReportState = { status: 'success', data: foundReport };
-          } else {
-            currentReportState = { status: 'error', error: 'Report not found in your history.' };
-          }
-        } else {
-          currentReportState = { status: 'error', error: 'No report history found.' };
-        }
-      } catch (e) {
-        currentReportState = { status: 'error', error: 'Failed to load report from history.' };
+      if (reportId === 'latest') {
+          // This logic is for newly generated reports and remains the same
+          const unsubscribe = reportStore.subscribe((value) => {
+              currentReportState = {
+                  status: value.status,
+                  data: value.data ?? undefined,
+                  error: value.error ?? undefined
+              };
+          });
+          return unsubscribe;
+      } else {
+          // This logic is for fetching a specific historical report
+          const unsubscribe = userStore.subscribe(async (user) => {
+              if (user === undefined) {
+                  currentReportState = { status: 'loading' };
+                  return;
+              }
+
+              try {
+                  if (user && reportId) {
+                      const docRef = doc(db, 'reports', reportId);
+                      const docSnap = await getDoc(docRef);
+
+                      if (docSnap.exists()) {
+                          // Security check: Make sure this user owns this report
+                          if (docSnap.data().userId !== user.uid) {
+                              throw new Error('You do not have permission to view this report.');
+                          }
+                          // Firestore timestamps need to be converted to Date objects
+                          const data = docSnap.data();
+                          const reportWithDateObjects: ReportData = {
+                              ...data,
+                              date: (data.date as Timestamp).toDate()
+                          } as ReportData;
+
+                          currentReportState = { status: 'success', data: reportWithDateObjects };
+                      } else {
+                          currentReportState = { status: 'error', error: 'Report not found.' };
+                      }
+                  } else {
+                      const rawHistory = localStorage.getItem('reportHistory');
+                      if (!rawHistory) throw new Error('No report history found.');
+                      
+                      const history: ReportData[] = JSON.parse(rawHistory);
+                      const decodedId = decodeURIComponent(reportId || "");
+                      const foundReport = history.find(r => r.date.toString() === decodedId);
+                      
+                      if (foundReport) {
+                          currentReportState = { status: 'success', data: foundReport };
+                      } else {
+                          currentReportState = { status: 'error', error: 'Report not found in your local history.' };
+                      }
+                  }
+              } catch (e: any) {
+                  console.error('Failed to load report:', e);
+                  currentReportState = { status: 'error', error: e.message || 'Failed to load report.' };
+              }
+          });
+          return unsubscribe;
       }
-    }
   });
 
   const formatCriterionName = (key: string) => {

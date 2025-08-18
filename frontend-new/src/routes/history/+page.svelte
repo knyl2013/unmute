@@ -1,50 +1,81 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
-    import HistoryChart from '$lib/components/HistoryChart.svelte'; // The bonus chart component
+    import HistoryChart from '$lib/components/HistoryChart.svelte';
+    import { userStore, type ReportData } from '$lib/stores'; // <-- Import userStore
+    import { db } from '$lib/firebase'; // <-- Import Firestore instance
+    import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore'; // <-- Import Firestore functions
+	import type { HistoryEntry } from '../../types/ChatHistory';
 
-    // Define the type for a single report entry
-    type ReportEntry = {
-        date: string;
-        overallScore: number;
-    };
-
-    let historyEntries: ReportEntry[] = [];
+    let historyEntries: HistoryEntry[] = [];
     let error: string | null = null;
     let isLoading = true;
 
     onMount(() => {
-        try {
-            const rawHistory = localStorage.getItem('reportHistory');
-            if (!rawHistory) {
-                historyEntries = [];
-                isLoading = false;
+        // We subscribe to the userStore to react to login/logout status
+        const unsubscribe = userStore.subscribe(async (user) => {
+            // user is `undefined` on initial load, so we wait.
+            if (user === undefined) {
                 return;
             }
-            
-            const parsedHistory: ReportEntry[] = JSON.parse(rawHistory);
-            
-            // Sort entries by date, newest first
-            parsedHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            
-            historyEntries = parsedHistory;
-        } catch (e) {
-            console.error('Failed to parse report history:', e);
-            error = 'Could not load report history. The data might be corrupted.';
-        } finally {
-            isLoading = false;
-        }
+
+            isLoading = true;
+
+            try {
+                if (user) {
+                    const reportsRef = collection(db, 'reports');
+                    // Create a query to get reports for this user, ordered by creation time
+                    const q = query(
+                        reportsRef,
+                        where('userId', '==', user.uid),
+                        orderBy('date', 'desc')
+                    );
+                    const querySnapshot = await getDocs(q);
+                    const firebaseHistory: HistoryEntry[] = [];
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        firebaseHistory.push({
+                            id: doc.id,
+                            date: (data.date as Timestamp).toDate(),
+                            overallScore: data.overallScore
+                        });
+                    });
+                    historyEntries = firebaseHistory;
+                } else {
+                    const rawHistory = localStorage.getItem('reportHistory');
+                    if (!rawHistory) {
+                        historyEntries = [];
+                        return;
+                    }
+                    const parsedHistory: ReportData[] = JSON.parse(rawHistory);
+                    parsedHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+                    // We map it to the new structure, using the date as a fallback ID
+                    historyEntries = parsedHistory.map((report) => ({
+                        id: report.date.toString(), // The ID for guests is still the date string
+                        date: new Date(report.date),
+                        overallScore: report.overallScore
+                    }));
+                }
+            } catch (e) {
+                console.error('Failed to load report history:', e);
+                error = 'Could not load your report history.';
+            } finally {
+                isLoading = false;
+            }
+        });
+
+        // Clean up the subscription when the component is destroyed
+        return () => unsubscribe();
     });
 
-    // Navigate to the detail page for a specific report
-    const viewReportDetail = (reportDate: string) => {
-        // We'll use the date as a unique ID. We need to make the report page a dynamic route.
-        goto(`/report/${encodeURIComponent(reportDate)}`);
+    const viewReportDetail = (reportId: string) => {
+        goto(`/report/${encodeURIComponent(reportId)}`);
     };
 
     // Helper to format dates for display
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-US', {
+    const formatDate = (date: Date) => {
+        return date.toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
@@ -97,8 +128,8 @@
             <section>
                 <h2 class="sectionTitle">Past Reports</h2>
                 <div class="reportList">
-                    {#each historyEntries as report (report.date)}
-                        <button class="reportItem" on:click={() => viewReportDetail(report.date)}>
+                    {#each historyEntries as report}
+                        <button class="reportItem" on:click={() => viewReportDetail(report.id)}>
                             <div class="reportItemInfo">
                                 <span class="reportDate">{formatDate(report.date)}</span>
                                 <span class="reportAvgLabel">Avg. Score</span>
