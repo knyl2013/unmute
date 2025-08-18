@@ -65,6 +65,7 @@
         display: flex;
         align-items: center;
         gap: 12px;
+        padding: 8px 16px;
         border-radius: 20px;
         border: 1px solid rgba(255, 255, 255, 0.5);
         background: rgba(255, 255, 255, 0.1);
