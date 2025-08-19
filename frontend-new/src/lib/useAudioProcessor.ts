@@ -65,8 +65,13 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
 
     const gainNode = outputAnalyser.context.createGain();
     gainNode.gain.value = 3.0; // setting it to 300%
-    gainNode.connect(outputAnalyser.context.destination);
+
     outputWorklet.connect(outputAnalyser);
+    outputAnalyser.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    outputWorklet.connect(mediaStreamDestination);
+    source.connect(mediaStreamDestination);
 
     const decoder = new Worker("/decoderWorker.min.js") as Worker;
     let micDuration = 0;

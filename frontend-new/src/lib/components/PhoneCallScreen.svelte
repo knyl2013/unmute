@@ -237,9 +237,7 @@
 					if (message.delta) {
 						const opus = base64DecodeOpus(message.delta);
 						const ap = audioProcessorMain;
-						console.log(ap);
 						if (!ap) return;
-
 						ap.decoder.postMessage(
 							{
 								command: 'decode',
