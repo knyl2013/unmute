@@ -146,6 +146,9 @@
 		if (mediaStream) {
 			requestWakeLock();
 			readyState = 'CONNECTING';
+			if ((navigator as any).audioSession) {
+				(navigator as any).audioSession.type = 'play-and-record';
+			}
 			audioProcessorMain = await setupAudio(mediaStream);
 			isOngoing = true;
 			callDuration = 0;
