@@ -2,14 +2,22 @@
     import { onMount } from 'svelte';
     import { goto } from '$app/navigation';
     import HistoryChart from '$lib/components/HistoryChart.svelte';
-    import { userStore, type ReportData } from '$lib/stores'; // <-- Import userStore
-    import { db } from '$lib/firebase'; // <-- Import Firestore instance
-    import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore'; // <-- Import Firestore functions
+    import { userStore, type ReportData } from '$lib/stores';
+    import { db } from '$lib/firebase';
+    import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
 	import type { HistoryEntry } from '../../types/ChatHistory';
 
     let historyEntries: HistoryEntry[] = [];
     let error: string | null = null;
     let isLoading = true;
+
+    const goBack = () => {
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            goto('/');
+        }
+    };
 
     onMount(() => {
         // We subscribe to the userStore to react to login/logout status
@@ -88,7 +96,7 @@
 <div class="reportContainer">
     <main class="mainContent">
         <header class="header">
-            <button class="backButton" on:click={() => goto('/')} aria-label="Back">
+            <button class="backButton" on:click={goBack} aria-label="Back">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M15.41 7.41L14 6L8 12L14 18L15.41 16.59L10.83 12L15.41 7.41Z" fill="white" />
                 </svg>
@@ -158,12 +166,6 @@
     .mainContent { -ms-overflow-style: none; scrollbar-width: none; }
     /* Shared Section Title */
     .sectionTitle { font-size: 1.4rem; font-weight: 600; margin-top: 20px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.15); }
-    /* Footer Controls */
-    .footerControls { padding: 20px; text-align: center; flex-shrink: 0; }
-    .actionButton { display: inline-block; padding: 15px 40px; border-radius: 30px; border: none; color: white; font-size: 1.1rem; font-weight: 600; text-decoration: none; cursor: pointer; transition: background-color 0.2s ease, transform 0.1s ease; }
-    .actionButton:active { transform: scale(0.98); }
-    .actionButton.start { background-color: #34c759; }
-    .actionButton.start:hover { background-color: #45d160; }
     /* Status/Loading States */
     .statusContainer { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; text-align: center; }
     .statusTitle { font-size: 2rem; font-weight: 600; margin-bottom: 10px; }
