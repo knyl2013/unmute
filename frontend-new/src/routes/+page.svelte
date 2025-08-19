@@ -167,7 +167,7 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 20px 20px 30px; /* Extra bottom padding for mobile home bars */
+        padding-bottom: 20px;
         background: linear-gradient(to top, rgba(58, 39, 35, 1) 20%, rgba(58, 39, 35, 0.8) 70%, rgba(58, 39, 35, 0));
         pointer-events: none;
     }
