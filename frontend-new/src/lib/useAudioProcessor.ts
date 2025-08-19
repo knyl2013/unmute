@@ -64,7 +64,7 @@ export function useAudioProcessor(onOpusRecorded: (chunk: Uint8Array) => void) {
     outputAnalyser.fftSize = 2048;
 
     const gainNode = outputAnalyser.context.createGain();
-    gainNode.gain.value = 3.0; // setting it to 300%
+    gainNode.gain.value = 5.0; // setting it to 500%
 
     outputWorklet.connect(outputAnalyser);
     outputAnalyser.connect(gainNode);
