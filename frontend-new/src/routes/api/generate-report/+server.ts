@@ -2,7 +2,7 @@ import { OpenAI } from 'openai';
 import { OPENAI_API_KEY } from '$env/static/private';
 import { json, error as svelteKitError } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import type { ChatMessage } from '$lib/types'; // Adjust path if needed
+import type { ChatMessage } from '$lib/types';
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
@@ -14,14 +14,14 @@ export const POST: RequestHandler = async ({ request }) => {
       throw svelteKitError(400, 'Conversation data is required.');
     }
 
-    const userTranscript = conversation.map(msg => msg.content).join('\n');
+    const userTranscript = conversation.map(msg => (msg.role) + ": " + msg.content).join('\n');
 
     // The core of the feature: The Prompt
     const systemPrompt = `
-      You are an expert IELTS examiner. Your task is to evaluate a student's conversation transcript based on the four official IELTS speaking criteria. Provide a score from 1-9 for each criterion and an overall band score.
+      You are an expert IELTS examiner. Your task is to evaluate a user's conversation transcript based on the four official IELTS speaking criteria. Provide a score from 1-9 for each criterion and an overall band score.
 
       The criteria are:
-      1.  **Fluency and coherence (FC)**: Assess the student's ability to speak at length, the flow of their speech, and the logical connection between their ideas.
+      1.  **Fluency and coherence (FC)**: Assess the user's ability to speak at length, the flow of their speech, and the logical connection between their ideas.
       2.  **Lexical Resource (LR)**: Evaluate the range and accuracy of the vocabulary used. Look for idiomatic language and less common words.
       3.  **Grammatical Range and Accuracy (GRA)**: Judge the variety and correctness of grammatical structures.
       4.  **Pronunciation (P)**: Based on the text, you cannot assess actual pronunciation. Instead, evaluate this based on textual cues that might suggest naturalness, such as the use of contractions and conversational phrasing. Acknowledge this limitation in your feedback for this criterion.
