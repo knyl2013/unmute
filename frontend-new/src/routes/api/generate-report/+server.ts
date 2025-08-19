@@ -51,6 +51,7 @@ export const POST: RequestHandler = async ({ request }) => {
             "suggestion": "<string: The corrected or improved version of the phrase. Example: 'I went to school by bus.'>",
             "explanation": "<string: A brief, clear reason for the change. Example: 'Use the preposition \\'by\\' when referring to a mode of transport.'>"
           }
+          ... // Include more suggestions (at most 5) if needed
         ],
         "conversationSummary": "<string: Short summary for the conversation"
       }
