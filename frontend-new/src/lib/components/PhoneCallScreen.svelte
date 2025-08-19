@@ -172,7 +172,7 @@
 
 		// Now, start the report generation in the background. The page is already
 		// listening for the result via the reportStore.
-		await generateReport(chatHistory, isReportReady);
+		await generateReport(chatHistory, isReportReady, callDuration);
 	};
 
 	const requestWakeLock = async () => {

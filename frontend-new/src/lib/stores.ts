@@ -62,7 +62,7 @@ export const reportStore = writable<ReportState>({
   error: null,
 });
 
-export const generateReport = async (chatHistory: ChatMessage[], isReportReady: boolean) => {
+export const generateReport = async (chatHistory: ChatMessage[], isReportReady: boolean, callDuration: number) => {
   reportStore.set({ status: 'generating', data: null, error: null });
 
   const currentUser = get(userStore);
@@ -89,11 +89,16 @@ export const generateReport = async (chatHistory: ChatMessage[], isReportReady: 
       await addDoc(collection(db, 'reports'), {
         ...reportData,
         userId: currentUser.uid,
-        date: new Date()
+        date: new Date(),
+        callDuration: callDuration
       });
     } else {
       const reportHistory = JSON.parse(localStorage.getItem('reportHistory') || '[]') || [];
-      const newReportHistory = [...reportHistory, reportData];
+      const newReportHistory = [...reportHistory, {
+        ...reportData,
+        date: new Date(),
+        callDuration: callDuration
+      }];
       localStorage.setItem('reportHistory', JSON.stringify(newReportHistory));
     }
 
