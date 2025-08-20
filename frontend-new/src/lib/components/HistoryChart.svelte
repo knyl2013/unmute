@@ -1,27 +1,64 @@
 <script lang="ts">
-	import type { HistoryEntry } from "../../types/ChatHistory";
+    import { goto } from '$app/navigation';
+    import type { HistoryEntry } from '../../types/ChatHistory';
 
     export let data: HistoryEntry[] = [];
 
-    // The data comes sorted newest-to-oldest. For plotting left-to-right, we need oldest-to-newest.
+    // The data comes sorted newest-to-oldest. For plotting, we need oldest-to-newest.
     $: plotData = [...data].reverse();
+
+    // --- State for interactivity ---
+    let hoveredData: HistoryEntry | null = null;
+    let tooltipX = 0;
+    let tooltipY = 0;
 
     // SVG dimensions and padding
     const width = 500;
     const height = 180;
     const padding = { top: 20, right: 10, bottom: 30, left: 25 };
     const yAxisMax = 9; // IELTS max score
+    const posOfReportId: Record<string, string> = {};
 
     // Calculate the points for the line graph
-    $: points = plotData
-        .map((d, i) => {
-            // X position is evenly spaced
-            const x = padding.left + (i * (width - padding.left - padding.right)) / (plotData.length - 1 || 1);
-            // Y position is based on score (inverted because SVG Y-axis is top-to-bottom)
-            const y = height - padding.bottom - ((d.overallScore / yAxisMax) * (height - padding.top - padding.bottom));
-            return `${x},${y}`;
-        })
-        .join(' ');
+    $: points =
+        plotData
+            .map((d, i) => {
+                const x =
+                    padding.left + (i * (width - padding.left - padding.right)) / (plotData.length - 1 || 1);
+                const y =
+                    height -
+                    padding.bottom -
+                    (d.overallScore / yAxisMax) * (height - padding.top - padding.bottom);
+                posOfReportId[d.id] = `${x},${y}`;
+                return posOfReportId[d.id];
+            })
+            .join(' ');
+
+    function handleMouseEnter(entry: HistoryEntry, event: MouseEvent) {
+        hoveredData = entry;
+        const pos = posOfReportId[hoveredData.id].split(',');
+        tooltipX = parseFloat(pos[0]);
+        tooltipY = parseFloat(pos[1]) - 50;
+    }
+
+    function handleMouseLeave() {
+        hoveredData = null;
+    }
+
+    function handlePointClick(reportId: string) {
+        if (reportId) {
+            goto(`/report/${encodeURIComponent(reportId)}`);
+        }
+    }
+
+    // Helper to format dates for the tooltip
+    const formatTooltipDate = (date: Date) => {
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    };
 </script>
 
 <div class="chartWrapper">
@@ -34,22 +71,32 @@
                 <text x={padding.left - 8} y={y + 4} class="axisLabel">{score}</text>
             </g>
         {/each}
-        
+
         <!-- X-Axis Line -->
-        <line x1={padding.left} y1={height - padding.bottom} x2={width - padding.right} y2={height - padding.bottom} class="axisLine" />
+        <line
+            x1={padding.left}
+            y1={height - padding.bottom}
+            x2={width - padding.right}
+            y2={height - padding.bottom}
+            class="axisLine"
+        />
 
         <!-- Data Line -->
         {#if points}
-            <polyline class="dataLine" points={points} />
+            <polyline class="dataLine" {points} />
         {/if}
 
-        <!-- Data Points and Date Labels -->
+        <!-- Data Points, Labels, and INTERACTION LAYERS -->
         {#each plotData as d, i}
             {@const x = padding.left + (i * (width - padding.left - padding.right)) / (plotData.length - 1 || 1)}
-            {@const y = height - padding.bottom - ((d.overallScore / yAxisMax) * (height - padding.top - padding.bottom))}
+            {@const y = height - padding.bottom - (d.overallScore / yAxisMax) * (height - padding.top - padding.bottom)}
             
-            <!-- Point circle -->
-            <circle cx={x} cy={y} r="4" class="dataPoint" />
+            <!-- Visible point circle, highlighted on hover -->
+            <circle cx={x} cy={y} r="4" class="dataPoint" class:active={hoveredData?.id === d.id} 
+                on:mouseenter={(e) => handleMouseEnter(d, e)}
+                on:mouseleave={handleMouseLeave}
+                on:click={() => handlePointClick(d.id)}
+            />
             
             <!-- Date label on X-axis -->
             <text x={x} y={height - padding.bottom + 15} class="axisLabel dateLabel">
@@ -57,10 +104,20 @@
             </text>
         {/each}
     </svg>
+
+    <!-- Tooltip Element -->
+    {#if hoveredData}
+        <div class="tooltip" style="--x:{tooltipX}px; --y:{tooltipY}px;">
+            <div class="tooltip-score">{hoveredData.overallScore.toFixed(1)}</div>
+            <div class="tooltip-date">{formatTooltipDate(hoveredData.date)}</div>
+        </div>
+    {/if}
 </div>
 
 <style>
+    /* Make the wrapper a positioning context for the tooltip */
     .chartWrapper {
+        position: relative;
         width: 100%;
         height: auto;
     }
@@ -96,5 +153,41 @@
         fill: #ffffff;
         stroke: #34c759;
         stroke-width: 2;
+        transition: r 0.2s ease; /* Smooth transition for size change */
+        cursor: pointer;
+    }
+
+    /* Highlight the hovered data point */
+    .dataPoint.active {
+        r: 6; /* Make the circle larger */
+    }
+
+    /* Tooltip styling */
+    .tooltip {
+        position: absolute;
+        left: var(--x);
+        top: var(--y);
+        background: #2c2c2e;
+        color: white;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        pointer-events: none; /* So the tooltip doesn't block mouse events on the chart */
+        white-space: nowrap;
+        text-align: center;
+        transition: opacity 0.2s;
+        z-index: 10;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .tooltip-score {
+        font-weight: 600;
+        font-size: 1rem;
+    }
+
+    .tooltip-date {
+        color: #c7c7cc;
+        font-size: 0.7rem;
     }
 </style>
