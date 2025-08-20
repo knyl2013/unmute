@@ -28,7 +28,11 @@
 </script>
 
 <div class="auth-container" bind:this={containerEl}>
-    {#if $userStore}
+    {#if $userStore === undefined}
+        <div class="loader-container">
+            <div class="loader"></div>
+        </div>
+    {:else if $userStore}
         <div class="profile-container">
             <button class="avatar-button" on:click={togglePopup} aria-label="Open user menu">
                 <FallbackAvatar name={$userStore.displayName || "Guest"} size={27} />
@@ -142,5 +146,31 @@
 
     .popup-item:hover {
         background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .loader-container {
+        position: absolute;
+        top: 6px;
+        right: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 27px;
+        width: 27px;
+    }
+
+    .loader {
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top-color: #ffffff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
     }
 </style>
