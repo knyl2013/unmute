@@ -34,7 +34,7 @@
 	function handleMouseEnter(entry: HistoryEntry, event: MouseEvent) {
 		hoveredData = entry;
 		tooltipX = event.clientX - 100;
-		tooltipY = event.clientY - 290;
+		tooltipY = event.clientY - 200;
 	}
 
 	function handleMouseLeave() {
