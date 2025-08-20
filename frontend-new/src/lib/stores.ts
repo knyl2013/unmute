@@ -40,6 +40,7 @@ export interface ReportData {
   suggestionsForImprovement: string[];
   specificSuggestions?: SpecificSuggestion[];
   conversationSummary: string;
+  callDuration?: number; // in seconds
 }
 
 interface ReportState {
@@ -61,6 +62,8 @@ export const reportStore = writable<ReportState>({
   data: null,
   error: null,
 });
+
+export const reportHistoryStore = writable<ReportData[]>([]);
 
 export const generateReport = async (chatHistory: ChatMessage[], isReportReady: boolean, callDuration: number) => {
   reportStore.set({ status: 'generating', data: null, error: null });

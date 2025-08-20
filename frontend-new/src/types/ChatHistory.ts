@@ -7,4 +7,5 @@ export type HistoryEntry = {
     id: string;
     date: Date;
     overallScore: number;
+    callDuration?: number;
 };

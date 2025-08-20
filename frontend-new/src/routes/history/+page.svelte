@@ -11,6 +11,19 @@
     let error: string | null = null;
     let isLoading = true;
 
+    $: averageScore =
+        historyEntries.length > 0
+            ? historyEntries.reduce((sum, entry) => sum + entry.overallScore, 0) /
+                historyEntries.length
+            : 0;
+
+    $: totalMinutes =
+        historyEntries.length > 0
+            ? Math.round(
+                    historyEntries.reduce((sum, entry) => sum + (entry.callDuration || 0), 0) / 60
+                )
+            : 0;
+
     const goBack = () => {
         if (window.history.length > 1) {
             window.history.back();
@@ -45,7 +58,8 @@
                         firebaseHistory.push({
                             id: doc.id,
                             date: (data.date as Timestamp).toDate(),
-                            overallScore: data.overallScore
+                            overallScore: data.overallScore,
+                            callDuration: data.callDuration
                         });
                     });
                     historyEntries = firebaseHistory;
@@ -62,7 +76,8 @@
                     historyEntries = parsedHistory.map((report) => ({
                         id: report.date.toString(), // The ID for guests is still the date string
                         date: new Date(report.date),
-                        overallScore: report.overallScore
+                        overallScore: report.overallScore,
+                        callDuration: report.callDuration
                     }));
                 }
             } catch (e) {
@@ -126,6 +141,16 @@
             {#if historyEntries.length > 1}
             <section>
                 <h2 class="sectionTitle">Score Progression</h2>
+                <div class="statsContainer" class:no-chart={historyEntries.length <= 1}>
+                    <div class="statItem">
+                        <span class="statValue">{averageScore.toFixed(1)}</span>
+                        <span class="statLabel">Avg. Score</span>
+                    </div>
+                    <div class="statItem">
+                        <span class="statValue">{totalMinutes}</span>
+                        <span class="statLabel">Total Practice (min)</span>
+                    </div>
+                </div>
                 <div class="chartContainer">
                     <HistoryChart data={historyEntries} />
                 </div>
@@ -179,6 +204,36 @@
         padding: 20px;
         border-radius: 15px;
         border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .statsContainer {
+        display: flex;
+        justify-content: space-around;
+        padding: 20px;
+        margin-bottom: 20px;
+        margin-top: 15px; /* Space between chart and stats */
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .statsContainer.no-chart {
+        margin-top: 0; /* Remove top margin if the chart isn't displayed */
+    }
+
+    .statItem {
+        text-align: center;
+    }
+
+    .statValue {
+        font-size: 2rem;
+        font-weight: 700;
+        display: block;
+    }
+
+    .statLabel {
+        font-size: 0.8rem;
+        color: #c7c7cc;
     }
     
     .reportList {
