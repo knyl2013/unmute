@@ -53,7 +53,7 @@ export const POST: RequestHandler = async ({ request }) => {
           }
           ... // Include more suggestions (at most 5) if needed
         ],
-        "conversationSummary": "<string: Short summary for the conversation"
+        "conversationSummary": "<string: Summary for the conversation, (and some user performance if applicable) in a way that an LLM would unserstand for context"
       }
     `;
 

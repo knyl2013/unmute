@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { userStore } from '$lib/stores';
+    import { userStore, userSettingsStore, updateUserSettings } from '$lib/stores';
     import { signInWithGoogle, signOutUser } from '$lib/auth';
     import { scale } from 'svelte/transition';
 	import FallbackAvatar from './FallbackAvatar.svelte';
@@ -21,6 +21,12 @@
             closePopup();
         }
     };
+
+    async function handleMemoryToggle() {
+        // The bind:checked already updated the store's local state.
+        // Now we persist this change to Firebase.
+        await updateUserSettings({ memory: $userSettingsStore.memory });
+    }
 
     onMount(() => {
         window.addEventListener('click', handleClickOutside, true);
@@ -43,6 +49,39 @@
                     <div class="popup-header">
                         <strong>{$userStore.displayName}</strong>
                         <span class="email">{$userStore.email}</span>
+                    </div>
+                    <hr />
+                    <div class="popup-item-toggle">
+                        <span>Memory</span>
+                        <div class="tooltip-container">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="info-icon"
+                            >
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="16" x2="12" y2="12" />
+                                <line x1="12" y1="8" x2="12.01" y2="8" />
+                            </svg>
+                            <div class="tooltip-text">
+                                When enabled, the AI will remember the summaries of your last conversations for better context and continuity.
+                            </div>
+                        </div>
+                        <label class="switch">
+                            <input
+                                type="checkbox"
+                                bind:checked={$userSettingsStore.memory}
+                                on:change={handleMemoryToggle}
+                            />
+                            <span class="slider round"></span>
+                        </label>
                     </div>
                     <hr />
                     <button class="popup-item" on:click={signOutUser}>
@@ -166,6 +205,113 @@
         border-top-color: #ffffff;
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
+    }
+
+    .popup-item-toggle {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 12px;
+        font-size: 0.95rem;
+    }
+
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+    }
+
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #555;
+        transition: 0.4s;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: '';
+        height: 20px;
+        width: 20px;
+        left: 2px;
+        bottom: 2px;
+        background-color: white;
+        transition: 0.4s;
+    }
+
+    input:checked + .slider {
+        background-color: #4cd964; /* iOS green */
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(20px);
+    }
+
+    .slider.round {
+        border-radius: 34px;
+    }
+
+    .slider.round:before {
+        border-radius: 50%;
+    }
+
+    .tooltip-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    .info-icon {
+        color: #8e8e93; /* Lighter grey for the icon */
+        cursor: help;
+    }
+
+    .tooltip-text {
+        visibility: hidden;
+        opacity: 0;
+        width: 200px;
+        background-color: #48484a; /* Darker than menu for contrast */
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 8px;
+        position: absolute;
+        z-index: 1;
+        bottom: 150%; /* Position above the icon */
+        left: 50%;
+        transform: translateX(-50%);
+        transition: opacity 0.2s ease-in-out;
+        font-size: 0.8rem;
+        line-height: 1.4;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    /* The little arrow pointing down */
+    .tooltip-text::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: #48484a transparent transparent transparent;
+    }
+
+    .tooltip-container:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
     }
 
     @keyframes spin {

@@ -4,16 +4,19 @@
 	import FaPhone from 'svelte-icons/fa/FaPhone.svelte';
 	import FaCheckCircle from 'svelte-icons/fa/FaCheckCircle.svelte';
 
-	import { DEFAULT_UNMUTE_CONFIG, type UnmuteConfig } from '$lib/config';
+	import { DEFAULT_UNMUTE_CONFIG, instructionsToPlaceholder, type Instructions, type UnmuteConfig } from '$lib/config';
 
 	import { useMicrophoneAccess } from '$lib/useMicrophoneAccess';
 	import { useAudioProcessor, type AudioProcessor } from '$lib/useAudioProcessor';
 	import { base64DecodeOpus, base64EncodeOpus } from '$lib/audioUtil';
 	import type { ChatMessage } from '$lib/chatHistory';
 
-	import { generateReport, now } from '$lib/stores';
+	import { generateReport, now, userSettingsStore, userStore, type ReportData } from '$lib/stores';
 	import { goto } from '$app/navigation';
 	import Login from './Login.svelte';
+	import { get } from 'svelte/store';
+	import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
+	import { db } from '$lib/firebase';
 
 	export let name: string = 'IELTS Examiner';
 	export let description: string = 'Estimate your IELTS speaking score by chatting to AI';
@@ -217,19 +220,56 @@
 			readyState = 'CONNECTING';
 			const newWs = new WebSocket(webSocketUrl, ['realtime']);
 
-			newWs.onopen = () => {
+			newWs.onopen = async () => {
 				console.log('WebSocket connected!');
 				readyState = 'OPEN';
-				// Send initial configuration message once connected
-				console.log('WebSocket connected! Sending config:', unmuteConfig);
+				let finalInstructions: Instructions = unmuteConfig.instructions;
+				const currentUser = get(userStore);
+				const settings = get(userSettingsStore);
+
+				if (currentUser && settings.memory) {
+					console.log('Memory feature enabled. Fetching recent conversation summaries...');
+					try {
+						const reportsRef = collection(db, 'reports');
+						const q = query(
+							reportsRef,
+							where('userId', '==', currentUser.uid),
+							orderBy('date', 'desc'),
+							limit(5)
+						);
+						const querySnapshot = await getDocs(q);
+						const summaries = querySnapshot.docs.map(
+							(doc) => (doc.data() as ReportData).conversationSummary
+						);
+
+						if (summaries.length > 0) {
+							const memoryPrefix = `For context, here are summaries of our last ${summaries.length} conversations:\n\n${summaries.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nPlease keep these in mind for continuity. Now, let's begin today's conversation.`;
+							
+							const originalInstructionsText = instructionsToPlaceholder(unmuteConfig.instructions);
+							
+							const fullText = `${memoryPrefix}\n\n${originalInstructionsText}`;
+
+							// We overwrite the instructions with a new 'constant' type
+							// that includes our memory context.
+							finalInstructions = { type: 'constant', text: fullText };
+							console.log('Added conversation memory to instructions.');
+						}
+					} catch (error) {
+						console.error("Failed to fetch conversation history for memory:", error);
+						// If fetching fails, we'll just proceed without memory.
+					}
+				}
+				const sessionPayload = {
+					instructions: finalInstructions,
+					// voice: 'unmute-prod-website/ex04_narration_longform_00001.wav', // Female voice
+					voice: 'unmute-prod-website/developer-1.mp3', // Male voice
+					allow_recording: true
+				};
+				console.log('WebSocket connected! Sending config:', sessionPayload);
 				newWs.send(
 					JSON.stringify({
 						type: 'session.update',
-						session: {
-							instructions: { type: 'unmute_explanation' },
-							voice: 'unmute-prod-website/ex04_narration_longform_00001.wav',
-							allow_recording: true
-						}
+						session: sessionPayload
 					})
 				);
 			};

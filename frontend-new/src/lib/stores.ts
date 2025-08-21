@@ -3,7 +3,7 @@ import type { ChatMessage } from './chatHistory';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth, db } from '$lib/firebase';
 import { get } from 'svelte/store';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, setDoc } from 'firebase/firestore';
 
 /**
  * A readable Svelte store that updates with the current Date every second.
@@ -49,12 +49,46 @@ interface ReportState {
   error: string | null;
 }
 
+export interface UserSettings {
+  memory: boolean;
+}
+
+export const userSettingsStore = writable<UserSettings>({ memory: false });
+
 export const userStore = readable<User | null | undefined>(undefined, (set) => {
   const unsubscribe = onAuthStateChanged(auth, (user) => {
     set(user);
   });
   return () => unsubscribe();
 });
+
+userStore.subscribe(async (user) => {
+    if (user) {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists() && userDocSnap.data().settings) {
+            // User has settings saved, load them
+            userSettingsStore.set(userDocSnap.data().settings);
+        } else {
+            // First-time user or no settings, create default and set it
+            const defaultSettings: UserSettings = { memory: false };
+            await setDoc(userDocRef, { settings: defaultSettings }, { merge: true });
+            userSettingsStore.set(defaultSettings);
+        }
+    } else {
+        // User is logged out, reset to default state
+        userSettingsStore.set({ memory: false });
+    }
+});
+
+export const updateUserSettings = async (settings: Partial<UserSettings>) => {
+    const currentUser = get(userStore);
+    if (!currentUser) return;
+
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    await setDoc(userDocRef, { settings }, { merge: true });
+};
 
 // Create the writable store with an initial state
 export const reportStore = writable<ReportState>({
