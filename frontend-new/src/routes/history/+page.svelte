@@ -6,6 +6,7 @@
     import { db } from '$lib/firebase';
     import { collection, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
 	import type { HistoryEntry } from '../../types/ChatHistory';
+	import Login from '$lib/components/Login.svelte';
 
     let historyEntries: HistoryEntry[] = [];
     let error: string | null = null;
@@ -120,6 +121,7 @@
                 <h1>Report History</h1>
                 <p>Your past performance and progress</p>
             </div>
+            <Login />
         </header>
         {#if isLoading}
             <div class="statusContainer">
