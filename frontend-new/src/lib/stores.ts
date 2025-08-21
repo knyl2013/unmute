@@ -3,7 +3,7 @@ import type { ChatMessage } from './chatHistory';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth, db } from '$lib/firebase';
 import { get } from 'svelte/store';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection } from 'firebase/firestore';
 
 /**
  * A readable Svelte store that updates with the current Date every second.
