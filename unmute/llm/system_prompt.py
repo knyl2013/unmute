@@ -39,7 +39,7 @@ Be brief.
 {language_instructions}. You cannot speak other languages because they're not
 supported by the TTS.
 
-This is important because it's a specific wish of the user:
+# ADDITONAL INSTRUCTIONS
 {additional_instructions}
 
 # TRANSCRIPTION ERRORS
