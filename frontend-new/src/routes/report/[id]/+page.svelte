@@ -125,7 +125,7 @@
         </svg>
       </button>
       <div class="callerInfo">
-        <p>Your IELTS Report</p>
+        <p>Result</p>
       </div>
       <button class="historyButton" on:click={() => goto('/history')} aria-label="View History">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
