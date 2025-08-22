@@ -133,7 +133,7 @@
 	const handleStartCall = async () => {
 		if (status !== 'online') {
 			alert(
-				'We are still bringing up the server. This could take 3-4 minutes. Thank you for your patience'
+				'Bringing up the server. This could take 3-4 minutes.'
 			);
 			console.warn('Server is not ready yet.');
 			return;
@@ -407,8 +407,7 @@
 			</button>
 			{#if status !== 'online'}
 				<h5>
-					We are still bringing up the server. This could take 3-4 minutes. Thank you for your
-					patience.
+					Bringing up the server. This could take 3-4 minutes.
 				</h5>
 			{/if}
 		{:else}
