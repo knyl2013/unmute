@@ -407,9 +407,12 @@
 			</button>
 			{#if status !== 'online'}
 				<h5>
-					Bringing up the server. This could take 3-4 minutes.
+					Bringing up the server
 				</h5>
 			{/if}
+			<div class="loadingBarContainer" class:finished={status === 'online'}>
+				<div class="loadingBar"></div>
+			</div>
 		{:else}
 			<button class="controlButton endCallButton" on:click={handleStopCall}>
 				<FaPhoneSlash />
@@ -689,6 +692,54 @@
 		opacity: 1;
 		transform: translateX(-50%) translateY(-2px);
 	}
+
+	.loadingBarContainer {
+        width: 250px;
+        height: 6px;
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 3px;
+        overflow: hidden;
+        position: absolute;
+		bottom: 30px;
+    }
+
+	.loadingBar {
+        width: 0%; /* Start at 0 width */
+        height: 100%;
+        background-color: #34c759; /* Green color to match the 'ready' button */
+        border-radius: 3px;
+        animation: fill-progress 50s linear forwards;
+    }
+
+	.loadingBarContainer.finished .loadingBar {
+        width: 100%;
+		animation: none;
+    }
+
+	.loadingBarContainer.finished {
+        animation: fade-out 1s ease-out forwards;
+	}
+
+	@keyframes fade-out {
+		0% {
+			opacity: 1;
+		}
+		80% {
+			opacity: 1;
+		}
+		100% {
+			opacity: 0;
+		}
+	}
+
+    @keyframes fill-progress {
+        from {
+            width: 0%;
+        }
+        to {
+            width: 90%;
+        }
+    }
 
 	@keyframes spin {
 		to {
