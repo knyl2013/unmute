@@ -233,6 +233,7 @@
 				let finalInstructions: Instructions = unmuteConfig.instructions;
 				const currentUser = get(userStore);
 				const settings = get(userSettingsStore);
+				let summaries: string[] = [];
 
 				if (currentUser && settings.memory) {
 					console.log('Memory feature enabled. Fetching recent conversation summaries...');
@@ -245,29 +246,34 @@
 							limit(5)
 						);
 						const querySnapshot = await getDocs(q);
-						const summaries = querySnapshot.docs.map(
+						summaries = querySnapshot.docs.map(
 							(doc) => {
 								const data = doc.data() as ReportData;
 								return format((data.date as any).toDate()) + ": " + data.conversationSummary;
 							}
 						);
-
-						if (summaries.length > 0) {
-							const memoryPrefix = `For context, here are summaries of our last ${summaries.length} conversations:\n\n${summaries.map((s, i) => `${s}`).join('\n')}\n\nPlease keep these in mind for continuity. Now, let's begin today's conversation. If possible mention one of the last conversation when you greet the user initially.`;
-							
-							const originalInstructionsText = instructionsToPlaceholder(unmuteConfig.instructions);
-							
-							const fullText = `${memoryPrefix}\n\n${originalInstructionsText}`;
-
-							// We overwrite the instructions with a new 'constant' type
-							// that includes our memory context.
-							finalInstructions = { type: 'constant', text: fullText };
-							console.log('Added conversation memory to instructions.');
-						}
 					} catch (error) {
 						console.error("Failed to fetch conversation history for memory:", error);
 						// If fetching fails, we'll just proceed without memory.
 					}
+				} else if (!currentUser) {
+					console.log('Memory feature enabled by default for guests. Fetching recent conversation summaries...');
+					const reportHistory = JSON.parse(localStorage.getItem('reportHistory') || '[]') as ReportData[];
+					summaries = reportHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5).map(
+						(data) => {
+							return format(data.date) + ": " + data.conversationSummary;
+						}
+					);
+				}
+				if (summaries.length > 0) {
+					const memoryPrefix = `For context, here are summaries of our last ${summaries.length} conversations:\n\n${summaries.map((s, i) => `${s}`).join('\n')}\n\nPlease keep these in mind for continuity. Now, let's begin today's conversation. If possible mention one of the last conversation when you greet the user initially.`;
+					
+					const originalInstructionsText = instructionsToPlaceholder(unmuteConfig.instructions);
+					
+					const fullText = `${memoryPrefix}\n\n${originalInstructionsText}`;
+
+					finalInstructions = { type: 'constant', text: fullText };
+					console.log('Added conversation memory to instructions.');
 				}
 				const sessionPayload = {
 					instructions: finalInstructions,
