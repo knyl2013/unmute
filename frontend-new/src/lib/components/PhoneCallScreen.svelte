@@ -168,6 +168,11 @@
 	};
 
 	const handleStopCall = async () => {
+		if (!isReportReady) {
+			if (!confirm("The report is not ready yet. Are you sure you want to stop the call?")) {
+				return;
+			}
+		}
 		isOngoing = false;
 		shouldConnect = false;
 		shutdownAudio();
