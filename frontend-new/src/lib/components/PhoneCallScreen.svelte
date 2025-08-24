@@ -18,6 +18,8 @@
 	import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
 	import { db } from '$lib/firebase';
 
+	import { format } from 'timeago.js';
+
 	export let name: string = 'IELTS Examiner';
 	export let description: string = 'Estimate your IELTS speaking score by chatting to AI';
 	export let imageUrl: string = '/ielts-examiner.png';
@@ -239,11 +241,14 @@
 						);
 						const querySnapshot = await getDocs(q);
 						const summaries = querySnapshot.docs.map(
-							(doc) => (doc.data() as ReportData).conversationSummary
+							(doc) => {
+								const data = doc.data() as ReportData;
+								return format((data.date as any).toDate()) + ": " + data.conversationSummary;
+							}
 						);
 
 						if (summaries.length > 0) {
-							const memoryPrefix = `For context, here are summaries of our last ${summaries.length} conversations:\n\n${summaries.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\nPlease keep these in mind for continuity. Now, let's begin today's conversation.`;
+							const memoryPrefix = `For context, here are summaries of our last ${summaries.length} conversations:\n\n${summaries.map((s, i) => `${s}`).join('\n')}\n\nPlease keep these in mind for continuity. Now, let's begin today's conversation. If possible mention one of the last conversation when you greet the user initially.`;
 							
 							const originalInstructionsText = instructionsToPlaceholder(unmuteConfig.instructions);
 							
@@ -407,7 +412,7 @@
 			</button>
 			{#if status !== 'online'}
 				<h5>
-					Bringing up the server
+					Bringing up the server (This could take 3-4 mins)
 				</h5>
 			{/if}
 			<div class="loadingBarContainer" class:finished={status === 'online'}>
