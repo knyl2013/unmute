@@ -343,19 +343,19 @@
 		}
 	}
 
-	$: if (unmuteConfig && isOngoing && ws && readyState === 'OPEN') {
-		console.log('Config changed mid-call. Sending update:', unmuteConfig);
-		ws.send(
-			JSON.stringify({
-				type: 'session.update',
-				session: {
-					instructions: unmuteConfig.instructions,
-					voice: unmuteConfig.voice,
-					allow_recording: false
-				}
-			})
-		);
-	}
+	// $: if (unmuteConfig && isOngoing && ws && readyState === 'OPEN') {
+	// 	console.log('Config changed mid-call. Sending update:', unmuteConfig);
+	// 	ws.send(
+	// 		JSON.stringify({
+	// 			type: 'session.update',
+	// 			session: {
+	// 				instructions: unmuteConfig.instructions,
+	// 				voice: unmuteConfig.voice,
+	// 				allow_recording: false
+	// 			}
+	// 		})
+	// 	);
+	// }
 </script>
 
 <div class="callContainer">
