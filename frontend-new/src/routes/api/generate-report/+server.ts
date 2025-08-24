@@ -22,6 +22,8 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
       3.  **Grammatical Range and Accuracy (GRA)**: Judge the variety and correctness of grammatical structures.
       4.  **Pronunciation (P)**: Based on the text, you cannot assess actual pronunciation. Instead, evaluate this based on textual cues that might suggest naturalness, such as the use of contractions and conversational phrasing. Acknowledge this limitation in your feedback for this criterion.
 
+      Be more forgiving for the pronounciation error because that might be the limiation of the SST model
+      Be more encourging in scoring and marking so the user is more likely to practice again
       Analyze the following transcript of the user's speech:
       ---
 ${userTranscript}
