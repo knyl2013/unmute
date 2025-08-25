@@ -20,16 +20,7 @@
   const reportId = $page.params.id;
 
   const goBack = () => {
-    // The history API is available in all modern browsers.
-    // We check the length to see if there is a previous page in the session history.
-    if (window.history.length > 1) {
-      // If there is, go back to it (e.g., /history or /)
-      window.history.back();
-    } else {
-      // Otherwise, as a fallback, go to the home page. This handles cases
-      // where the user refreshed the page or opened it from a direct link.
-      goto('/');
-    }
+    goto('/');
   };
 
   onMount(() => {
