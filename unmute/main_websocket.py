@@ -38,6 +38,7 @@ from unmute.exceptions import (
     make_ora_error,
 )
 from unmute.kyutai_constants import (
+    KYUTAI_LLM_API_KEY,
     LLM_SERVER,
     MAX_VOICE_FILE_SIZE_MB,
     SAMPLE_RATE,
@@ -111,13 +112,17 @@ def _ws_to_http(ws_url: str) -> str:
     return ws_url.replace("ws://", "http://").replace("wss://", "https://")
 
 
-def _check_server_status(server_url: str, api_key: str | None = None) -> bool:
+def _check_server_status(server_url: str, headers: dict | None = None) -> bool:
     """Check if the server is up by sending a GET request."""
     headers = {}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     try:
-        response = requests.get(server_url, headers=headers, timeout=2)
+        response = requests.get(
+            server_url,
+            timeout=2,
+            headers=headers or {},
+        )
         logger.info(f"Response from {server_url}: {response}")
         return response.status_code == 200
     except requests.exceptions.RequestException as e:
@@ -163,7 +168,11 @@ async def _get_health(
         )
         llm_up = tg.create_task(
             asyncio.to_thread(
-                _check_server_status, _ws_to_http(LLM_SERVER) + "/models", KYUTAI_LLM_API_KEY
+                _check_server_status,
+                _ws_to_http(LLM_SERVER) + "/v1/models",
+                # The default vLLM server doesn't use auth, but this is needed if you
+                # use OpenAI or another LLM server.
+                headers={"Authorization": f"Bearer {KYUTAI_LLM_API_KEY}"},
             )
         )
         voice_cloning_up = tg.create_task(
