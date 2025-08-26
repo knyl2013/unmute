@@ -3,7 +3,7 @@ import type { ChatMessage } from './chatHistory';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth, db } from '$lib/firebase';
 import { get } from 'svelte/store';
-import { addDoc, collection, doc, getDoc, setDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 
 /**
  * A readable Svelte store that updates with the current Date every second.
@@ -145,4 +145,34 @@ export const generateReport = async (chatHistory: ChatMessage[], isReportReady: 
     console.error("Report generation failed:", err);
     reportStore.set({ status: 'error', data: null, error: err.message });
   }
+};
+
+export const saveFeedback = async (
+    rating: number,
+    feedbackText: string,
+    allowContact: boolean
+) => {
+    const currentUser = get(userStore);
+
+    if (!currentUser) {
+        throw new Error('You must be logged in to submit feedback.');
+    }
+
+    if (rating < 1 || rating > 5) {
+        throw new Error('A rating between 1 and 5 is required.');
+    }
+
+    try {
+        await addDoc(collection(db, 'feedback'), {
+            userId: currentUser.uid,
+            userEmail: currentUser.email,
+            rating: rating,
+            feedback: feedbackText.trim(), // Save trimmed text, or empty string if none
+            allowContact: allowContact,
+            createdAt: serverTimestamp()
+        });
+    } catch (error) {
+        console.error('Error writing feedback to Firestore: ', error);
+        throw new Error('Could not save your feedback. Please try again later.');
+    }
 };

@@ -4,6 +4,7 @@
     import { signInWithGoogle, signOutUser } from '$lib/auth';
     import { scale } from 'svelte/transition';
 	import FallbackAvatar from './FallbackAvatar.svelte';
+	import { goto } from '$app/navigation';
 
     let isPopupOpen = false;
     let containerEl: HTMLDivElement;
@@ -84,6 +85,9 @@
                         </label>
                     </div>
                     <hr />
+                    <button class="popup-item" on:click={() => goto('/feedback')}>
+                        Give Feedback
+                    </button>
                     <button class="popup-item" on:click={signOutUser}>
                         Sign Out
                     </button>
