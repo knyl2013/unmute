@@ -18,6 +18,9 @@
 	const padding = { top: 20, right: 10, bottom: 30, left: 25 };
 	const yAxisMax = 9; // IELTS max score
 
+	const maxVisibleLabels = 8;
+    $: labelStep = Math.max(1, Math.ceil(plotData.length / maxVisibleLabels));
+
 	// Calculate the points for the line graph
 	$: points = plotData
 		.map((d, i) => {
@@ -109,9 +112,11 @@
 			/>
 
 			<!-- Date label on X-axis -->
-			<text {x} y={height - padding.bottom + 15} class="axisLabel dateLabel">
-				{new Date(d.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
-			</text>
+			{#if i % labelStep === 0}
+				<text {x} y={height - padding.bottom + 15} class="axisLabel dateLabel">
+					{new Date(d.date).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}
+				</text>
+			{/if}
 		{/each}
 	</svg>
 
