@@ -11,11 +11,11 @@
 	import { base64DecodeOpus, base64EncodeOpus } from '$lib/audioUtil';
 	import type { ChatMessage } from '$lib/chatHistory';
 
-	import { generateReport, now, userSettingsStore, userStore, type ReportData } from '$lib/stores';
+	import { generateReport, now, userSettingsStore, userStore, type ReportData, userProfileStore } from '$lib/stores';
 	import { goto } from '$app/navigation';
 	import Login from './Login.svelte';
 	import { get } from 'svelte/store';
-	import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
+	import { collection, getCountFromServer, getDocs, limit, orderBy, query, Timestamp, where } from 'firebase/firestore';
 	import { db } from '$lib/firebase';
 
 	import { format } from 'timeago.js';
@@ -23,6 +23,58 @@
 	export let name: string = 'IELTS Examiner';
 	export let description: string = 'Estimate your IELTS speaking score by chatting to AI';
 	export let imageUrl: string = '/ielts-examiner.png';
+
+	let reportsToday: number = 0;
+    let dailyLimit: number = Infinity; // Default to infinity, will be updated
+    let isLoadingUsage: boolean = true; // For potential UI feedback
+
+    const checkUsage = async () => {
+        isLoadingUsage = true;
+        const currentUser = get(userStore);
+        const profile = get(userProfileStore);
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        if (currentUser && profile) {
+            // --- Logic for Signed-in User ---
+            dailyLimit = profile.plan === 'plus' ? Infinity : 2;
+
+            try {
+                const reportsRef = collection(db, 'reports');
+                // Query for reports by this user, created on or after the start of today
+                const q = query(
+                    reportsRef,
+                    where('userId', '==', currentUser.uid),
+                    where('date', '>=', Timestamp.fromDate(startOfDay))
+                );
+                // Use getCountFromServer for efficiency
+                const snapshot = await getCountFromServer(q);
+                reportsToday = snapshot.data().count;
+            } catch (error) {
+                console.error('Error fetching report count from Firestore:', error);
+                // Fail safe: assume 0 if there's an error
+                reportsToday = 0;
+            }
+        } else {
+            // --- Logic for Guest User ---
+            dailyLimit = 1;
+            try {
+                const localHistory: ReportData[] = JSON.parse(
+                    localStorage.getItem('reportHistory') || '[]'
+                );
+                reportsToday = localHistory.filter(report => new Date(report.date) >= startOfDay).length;
+            } catch (error) {
+                console.error('Error parsing report history from localStorage:', error);
+                reportsToday = 0;
+            }
+        }
+        isLoadingUsage = false;
+        console.log(`Usage Check: ${reportsToday} reports used today. Limit is ${dailyLimit}.`);
+    };
+
+	$: if ($userStore !== undefined) {
+        checkUsage();
+    }
 
 	let isOngoing: boolean = false;
 	let callDuration: number = 0;
@@ -87,6 +139,16 @@
 	}
 
 	onMount(() => {
+		if (reportsToday >= dailyLimit) {
+            alert(
+                `You have reached your daily limit of ${dailyLimit} ${
+                    dailyLimit === 1 ? 'report' : 'reports'
+                }. Please upgrade your plan or try again tomorrow.`
+            );
+            goto('/pricing');
+            return;
+        }
+
 		const audioProcessor = useAudioProcessor(onOpusRecorded);
 
 		setupAudio = audioProcessor.setupAudio;
@@ -97,7 +159,7 @@
 
 		checkHealth();
 		const intervalId = setInterval(checkHealth, 2000);
-
+		
 		notifyBackend('register');
 
 		return () => {

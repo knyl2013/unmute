@@ -53,6 +53,11 @@ export interface UserSettings {
   memory: boolean;
 }
 
+export interface UserProfile {
+    settings: UserSettings;
+    plan: 'signed' | 'plus';
+}
+
 export const userSettingsStore = writable<UserSettings>({ memory: false });
 
 export const userStore = readable<User | null | undefined>(undefined, (set) => {
@@ -62,14 +67,22 @@ export const userStore = readable<User | null | undefined>(undefined, (set) => {
   return () => unsubscribe();
 });
 
+export const userProfileStore = writable<UserProfile | null>(null);
+
 userStore.subscribe(async (user) => {
     if (user) {
         const userDocRef = doc(db, 'users', user.uid);
         const userDocSnap = await getDoc(userDocRef);
 
-        if (userDocSnap.exists() && userDocSnap.data().settings) {
-            // User has settings saved, load them
-            userSettingsStore.set(userDocSnap.data().settings);
+        if (userDocSnap.exists()) {
+            const data = userDocSnap.data();
+            // Construct the full user profile
+            const profile: UserProfile = {
+                settings: data.settings || { memory: false },
+                plan: data.plan || 'signed' // Default to 'signed' for existing users without a plan field
+            };
+            userProfileStore.set(profile);
+            userSettingsStore.set(profile.settings);
         } else {
             // First-time user or no settings, create default and set it
             const defaultSettings: UserSettings = { memory: false };
