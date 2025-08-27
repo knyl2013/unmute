@@ -19,6 +19,7 @@
 	import { db } from '$lib/firebase';
 
 	import { format } from 'timeago.js';
+	import { PUBLIC_GUEST_DAILY_LIMIT, PUBLIC_SIGNED_USER_DAILY_LIMIT } from '$env/static/public';
 
 	export let name: string = 'IELTS Examiner';
 	export let description: string = 'Estimate your IELTS speaking score by chatting to AI';
@@ -37,7 +38,7 @@
 
         if (currentUser && profile) {
             // --- Logic for Signed-in User ---
-            dailyLimit = profile.plan === 'plus' ? Infinity : 2;
+			dailyLimit = profile.plan === 'plus' ? Infinity : PUBLIC_SIGNED_USER_DAILY_LIMIT;
 
             try {
                 const reportsRef = collection(db, 'reports');
@@ -45,7 +46,7 @@
                 const q = query(
                     reportsRef,
                     where('userId', '==', currentUser.uid),
-                    where('date', '>=', Timestamp.fromDate(startOfDay))
+                    where('date', '>=', startOfDay)
                 );
                 // Use getCountFromServer for efficiency
                 const snapshot = await getCountFromServer(q);
@@ -57,7 +58,7 @@
             }
         } else {
             // --- Logic for Guest User ---
-            dailyLimit = 1;
+            dailyLimit = PUBLIC_GUEST_DAILY_LIMIT;
             try {
                 const localHistory: ReportData[] = JSON.parse(
                     localStorage.getItem('reportHistory') || '[]'
@@ -139,16 +140,6 @@
 	}
 
 	onMount(() => {
-		if (reportsToday >= dailyLimit) {
-            alert(
-                `You have reached your daily limit of ${dailyLimit} ${
-                    dailyLimit === 1 ? 'report' : 'reports'
-                }. Please upgrade your plan or try again tomorrow.`
-            );
-            goto('/pricing');
-            return;
-        }
-
 		const audioProcessor = useAudioProcessor(onOpusRecorded);
 
 		setupAudio = audioProcessor.setupAudio;
@@ -403,6 +394,17 @@
 			ws = null;
 			readyState = 'CLOSED';
 		}
+	}
+
+	$: {
+		if (reportsToday >= dailyLimit) {
+            alert(
+                `You have reached your daily limit of ${dailyLimit} ${
+                    dailyLimit === 1 ? 'report' : 'reports'
+                }. Please upgrade your plan or try again tomorrow.`
+            );
+            goto('/pricing');
+        }
 	}
 </script>
 

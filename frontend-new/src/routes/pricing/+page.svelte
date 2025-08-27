@@ -3,18 +3,21 @@
     import Login from '$lib/components/Login.svelte';
     import { userProfileStore } from '$lib/stores';
     import { signInWithGoogle } from '$lib/auth';
+	import { PUBLIC_GUEST_DAILY_LIMIT, PUBLIC_SIGNED_USER_DAILY_LIMIT } from '$env/static/public';
 
     const handleBack = () => {
         goto('/');
     };
 
-    // Define plans in an array for cleaner rendering
-    const plans = [
+    $: plans = [
         {
             title: 'Guest',
             price: 'Free',
             features: [
-                '<strong>One</strong> IELTS report per day'
+                // Use the limit from data and handle pluralization ('report' vs 'reports')
+                `<strong>${PUBLIC_GUEST_DAILY_LIMIT}</strong> IELTS ${
+                    PUBLIC_GUEST_DAILY_LIMIT === 1 ? 'report' : 'reports'
+                } per day`
             ],
             cta: {
                 text: 'Start Practicing',
@@ -25,7 +28,10 @@
             title: 'Signed User',
             price: 'Free',
             features: [
-                '<strong>Two</strong> IELTS reports per day',
+                // Use the limit from data here as well
+                `<strong>${PUBLIC_SIGNED_USER_DAILY_LIMIT}</strong> IELTS ${
+                    PUBLIC_SIGNED_USER_DAILY_LIMIT === 1 ? 'report' : 'reports'
+                } per day`,
                 'AI Memory Control'
             ],
             cta: {
@@ -37,10 +43,7 @@
             title: 'Plus User',
             price: 'Premium',
             status: 'coming-soon',
-            features: [
-                '<strong>Unlimited</strong> IELTS reports per day',
-                'AI Memory Control'
-            ],
+            features: ['<strong>Unlimited</strong> IELTS reports per day', 'AI Memory Control'],
             cta: {
                 text: 'Coming Soon',
                 action: () => {} // This action won't be triggered
@@ -54,7 +57,6 @@
         if ($userProfileStore === null) {
             currentPlanName = 'Guest';
         } else if ($userProfileStore.plan === 'plus') {
-            // This case won't happen until the plan is released, but it's good practice
             currentPlanName = 'Plus User';
         } else {
             currentPlanName = 'Signed User';
@@ -186,7 +188,6 @@
         transform: scale(1.03);
     }
 
-    /* --- CHANGE 6: Add styles for ANY disabled button --- */
     .ctaButton:disabled,
     .ctaButton:disabled:hover {
         background-color: #555;
@@ -250,7 +251,6 @@
         box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.3);
     }
 
-    /* --- CHANGE 7: Add styles for the disabled card --- */
     .pricingCard.disabled {
         opacity: 0.6;
     }
@@ -277,7 +277,6 @@
         border-radius: 0 0 8px 8px;
     }
 
-    /* --- CHANGE 8: Add styles for the secondary badge color --- */
     .badge-secondary {
         background-color: #8e8e93; /* A neutral gray */
     }
