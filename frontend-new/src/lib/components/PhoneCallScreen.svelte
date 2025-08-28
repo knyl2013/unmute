@@ -327,6 +327,14 @@
 
 					finalInstructions = { type: 'constant', text: fullText };
 					console.log('Added conversation memory to instructions.');
+				} else {
+					// This is a first-time user with no conversation history.
+					const welcomePrefix = `This is the user's first conversation. Please provide a warm and encouraging welcome. Let them know you're an AI partner here to help them practice English, and an IELTS score estimation will be generated after the conversation and they can stop whenever they want.`;
+					const originalInstructionsText = instructionsToPlaceholder(unmuteConfig.instructions);
+					const fullText = `${welcomePrefix}\n\n${originalInstructionsText}`;
+
+					finalInstructions = { type: 'constant', text: fullText };
+					console.log('This is a first-time user. Added welcoming instructions.');
 				}
 				const sessionPayload = {
 					instructions: finalInstructions,
