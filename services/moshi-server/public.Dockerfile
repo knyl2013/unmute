@@ -33,10 +33,7 @@ HEALTHCHECK --start-period=10m \
 EXPOSE 8080
 ENV RUST_BACKTRACE=1
 
-RUN wget https://raw.githubusercontent.com/kyutai-labs/moshi/a40c5612ade3496f4e4aa47273964404ba287168/rust/moshi-server/pyproject.toml
-RUN wget https://raw.githubusercontent.com/kyutai-labs/moshi/a40c5612ade3496f4e4aa47273964404ba287168/rust/moshi-server/uv.lock
-
-RUN uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+COPY pyproject.toml uv.lock ./
 
 COPY . .
 
