@@ -27,6 +27,8 @@ run_initial_setup() {
   echo "--- Installing system dependencies ---"
   apt-get update
 apt-get install -y vim libssl-dev pkg-config cmake net-tools
+  echo "--- Installing hf_transfer ---"
+  pip install hf_transfer
   echo "--- Initial setup complete ---"
 }
 
