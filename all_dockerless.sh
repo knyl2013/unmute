@@ -28,7 +28,7 @@ run_initial_setup() {
   apt-get update
 apt-get install -y vim libssl-dev pkg-config cmake net-tools
   echo "--- Installing hf_transfer ---"
-  pip install hf_transfer
+  /unmute/dockerless/.venv/bin/pip install hf_transfer
   echo "--- Initial setup complete ---"
 }
 
