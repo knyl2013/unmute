@@ -27,4 +27,5 @@ cargo install --features cuda moshi-server@0.6.3 --force
 # If you're getting `moshi-server: error: unrecognized arguments: worker`, it means you're
 # using the binary from the `moshi` Python package rather than from the Rust package.
 # Use `pip install moshi --upgrade` to update the Python package to >=0.2.8.
+uv pip install hf_transfer
 uv run --no-dev --locked --project ./dockerless moshi-server worker --config services/moshi-server/configs/tts-prod.toml --port 8089
