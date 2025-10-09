@@ -27,8 +27,8 @@ COPY --from=ghcr.io/astral-sh/uv:0.7.2 /uv /uvx /bin/
 ENV RUST_BACKTRACE=1
 COPY services/moshi-server/ /app/moshi-server/
 WORKDIR /app/moshi-server
-RUN wget https://raw.githubusercontent.com/kyutai-labs/moshi/a40c5612ade3496f4e4aa47273964404ba287168/rust/moshi-server/pyproject.toml
-RUN wget https://raw.githubusercontent.com/kyutai-labs/moshi/a40c5612ade3496f4e4aa47273964404ba287168/rust/moshi-server/uv.lock
+COPY services/moshi-server/pyproject.toml pyproject.toml
+COPY services/moshi-server/uv.lock uv.lock
 WORKDIR /app
 COPY --from=backend-builder /app ./
 
