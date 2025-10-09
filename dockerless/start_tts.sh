@@ -3,8 +3,8 @@ set -ex
 cd "$(dirname "$0")/"
 
 # This is part of a hack to get dependencies needed for the TTS Rust server, because it integrates a Python component
-[ -f pyproject.toml ] || wget https://raw.githubusercontent.com/kyutai-labs/moshi/9837ca328d58deef5d7a4fe95a0fb49c902ec0ae/rust/moshi-server/pyproject.toml
-[ -f uv.lock ] || wget https://raw.githubusercontent.com/kyutai-labs/moshi/9837ca328d58deef5d7a4fe95a0fb49c902ec0ae/rust/moshi-server/uv.lock
+[ -f pyproject.toml ] || cp ../services/moshi-server/pyproject.toml .
+[ -f uv.lock ] || cp ../services/moshi-server/uv.lock .
 
 uv venv
 source .venv/bin/activate
