@@ -7,7 +7,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv run --no-dev echo "Backend dependencies installed."
 COPY . .
 
-FROM nvidia/cuda:12.1.0-devel-ubuntu22.04 AS moshi-builder
+FROM nvidia/cuda:12.8.0-devel-ubuntu22.04 AS moshi-builder
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     curl \
